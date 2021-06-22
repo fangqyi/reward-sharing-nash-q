@@ -61,38 +61,3 @@ class LayerNorm(nn.Module):
         if self.center:
             output = output + self.center_param
         return output
-
-
-class ConfigDict(dict):
-    """Configuration container class."""
-
-    def __init__(self, initial_dictionary=None):
-        """Creates an instance of ConfigDict.
-        Args:
-          initial_dictionary: Optional dictionary or ConfigDict containing initial
-          parameters.
-        """
-        if initial_dictionary:
-            for field, value in initial_dictionary.items():
-                initial_dictionary[field] = _convert_sub_configs(value)
-            super().__init__(initial_dictionary)
-        else:
-            super().__init__()
-
-    def __setattr__(self, attribute, value):
-        self[attribute] = _convert_sub_configs(value)
-
-    def __getattr__(self, attribute):
-        try:
-            return self[attribute]
-        except KeyError as e:
-            raise AttributeError(e)
-
-    def __delattr__(self, attribute):
-        try:
-            del self[attribute]
-        except KeyError as e:
-            raise AttributeError(e)
-
-    def __setitem__(self, key, value):
-        super().__setitem__(key, _convert_sub_configs(value))

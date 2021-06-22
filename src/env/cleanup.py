@@ -8,7 +8,7 @@ from social_dilemmas.constants import CLEANUP_MAP
 from social_dilemmas.envs.cleanup import CleanupEnv
 
 from env.multiagentenv import MultiAgentEnv
-from utils.utils import ConfigDict
+from utils.configdict import ConfigDict
 
 
 class Cleanup(MultiAgentEnv):
