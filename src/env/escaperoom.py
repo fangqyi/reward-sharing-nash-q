@@ -83,7 +83,7 @@ class EscapeRoom(MultiAgentEnv):
         return [[_ for _ in range(self.l_action)] for _ in range(self.n_agents)]
 
     def get_total_actions(self):
-        raise self.l_action
+        return self.l_action
 
     def is_masked(self):
         return False

@@ -129,7 +129,7 @@ class Cleanup(MultiAgentEnv):
         return self.process_obs(self.obs)
 
     def get_obs_size(self):
-        raise self.dim_obs[0]*self.dim_obs[1]*self.dim_obs[2]
+        return self.dim_obs[0]*self.dim_obs[1]*self.dim_obs[2]
 
     def get_state(self):
         raise NotImplementedError
