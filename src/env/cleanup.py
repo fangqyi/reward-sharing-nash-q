@@ -68,7 +68,7 @@ class Cleanup(MultiAgentEnv):
                               global_ref_point=self.args.global_ref_point,
                               view_size=self.args.view_size,
                               random_orientation=self.args.random_orientation,
-                              cleanup_params=self.args.cleanup_params,
+                              cleanup_params=cleanup_params,
                               beam_width=self.args.beam_width)
 
         # length of action input to learned reward function
