@@ -1,0 +1,96 @@
+import torch as th
+import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
+
+
+class QMixer(nn.Module):
+    def __init__(self, args):
+        super(QMixer, self).__init__()
+
+        self.args = args
+        self.n_agents = args.n_agents
+        if "social_contract" in args.name:
+            self.state_dim = args.latent_state_dim
+        else:
+            self.state_dim = int(np.prod(args.state_shape))
+
+        self.embed_dim = args.mixing_embed_dim
+
+        self.hyper_w_1 = nn.Linear(self.state_dim, self.embed_dim * self.n_agents)
+        self.hyper_w_final = nn.Linear(self.state_dim, self.embed_dim)
+
+        # State dependent bias for hidden layer
+        self.hyper_b_1 = nn.Linear(self.state_dim, self.embed_dim)
+
+        # V(s) instead of a bias for the last layers
+        self.V = nn.Sequential(nn.Linear(self.state_dim, self.embed_dim),  # nn.Sequential function as a container
+                               nn.ReLU(),
+                               nn.Linear(self.embed_dim, 1))
+
+                    #(bs,t,n),
+    def forward(self, agent_qs, states):  # agent_qs: (batch_num, seq_len, agent_num)
+        bs = agent_qs.size(0)  # batch size
+        states = states.reshape(-1, self.state_dim)
+        agent_qs = agent_qs.view(-1, 1, self.n_agents)  # (bs*t, 1, agent_num)
+        # First layer
+        w1 = th.abs(self.hyper_w_1(states))  # produce the 1st layer hidden weights for each agent from state : (bs, t, embed_dim * n)
+        b1 = self.hyper_b_1(states)  # produce state-dependent hidden bias : (bs, embed_dim)
+        w1 = w1.view(-1, self.n_agents, self.embed_dim) # (bs*t, n, embed_dim)
+        b1 = b1.view(-1, 1, self.embed_dim)  # (bs*t, 1, embed_dim) | same for each batch?
+        hidden = F.elu(th.bmm(agent_qs, w1) + b1)  # (bs*t, 1, embed_dim)
+
+        # Second layer
+        w_final = th.abs(self.hyper_w_final(states))  # produce (bs*t, embed_dim)
+        w_final = w_final.view(-1, self.embed_dim, 1)  # (bs*t, embed_dim, 1)
+        # State-dependent bias
+        v = self.V(states).view(-1, 1, 1)  # bias (bs*t, 1, 1)
+        # Compute final output
+        y = th.bmm(hidden, w_final) + v  # (bs*t, 1, 1)
+        # Reshape and return
+        q_tot = y.view(bs, -1, 1)  # (bs, t, 1)
+        return q_tot #(bs,t,1)
+
+class DirMixer(nn.Module):
+    def __init__(self, args):
+        super(DirMixer, self).__init__()
+
+        self.args = args
+        self.n_agents = args.n_agents
+        self.state_dim = int(np.prod(args.latent_state_dim))
+
+        self.embed_dim = args.mixing_embed_dim
+
+        self.hyper_w_1 = nn.Linear(self.state_dim, self.embed_dim * self.n_agents)
+        self.hyper_w_final = nn.Linear(self.state_dim, self.embed_dim)
+
+        # State dependent bias for hidden layer
+        self.hyper_b_1 = nn.Linear(self.state_dim, self.embed_dim * args.latent_state_dim)
+
+        # V(s) instead of a bias for the last layers
+        self.V = nn.Sequential(nn.Linear(self.state_dim, self.embed_dim),  # nn.Sequential function as a container
+                               nn.ReLU(),
+                               nn.Linear(self.embed_dim, args.latent_state_dim))
+
+                    #(bs,t,n),
+    def forward(self, agent_dirs, states):  # agent_dirs: (batch_num, seq_len, agent_num, latent_state_dim)
+        bs = agent_dirs.size(0)  # batch size
+        latent_states = states.reshape(-1, self.state_dim)
+        agent_dirs = agent_dirs.view(-1, self.args.latent_state_dim, self.n_agents)  # (bs*t, latent_state_dim, agent_num)
+        # First layer
+        w1 = th.abs(self.hyper_w_1(latent_states))  # produce the 1st layer hidden weights for each agent from state : (bs, t, embed_dim * n)
+        b1 = self.hyper_b_1(latent_states)  # produce state-dependent hidden bias : (bs, embed_dim*latent_state_dim)
+        w1 = w1.view(-1, self.n_agents, self.embed_dim) # (bs*t, n, embed_dim)
+        b1 = b1.view(-1, self.args.latent_state_dim, self.embed_dim)  # (bs*t, latent_state_dim, embed_dim) | same for each batch?
+        hidden = F.elu(th.bmm(agent_dirs, w1) + b1)  # (bs*t, latent_state_dim, embed_dim)
+
+        # Second layer
+        w_final = th.abs(self.hyper_w_final(latent_states))  # produce (bs*t, embed_dim)
+        w_final = w_final.view(-1, self.embed_dim, 1)  # (bs*t, embed_dim, 1)
+        # State-dependent bias
+        v = self.V(states).view(-1, self.args.latent_state_dim, 1)  # bias (bs*t, latent_state_dim, 1)
+        # Compute final output
+        y = th.bmm(hidden, w_final) + v  # (bs*t, latent_state_dim, 1)
+        # Reshape and return
+        dir_tot = y.view(bs, -1, self.args.latent_state_dim)  # (bs, t, latent_state_dim)
+        return dir_tot #(bs,t,latent_state_dim)

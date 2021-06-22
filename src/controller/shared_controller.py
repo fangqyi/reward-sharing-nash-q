@@ -78,7 +78,7 @@ class BasicMAC:
         self.agent = agent_REGISTRY[self.args.agent](self.args, self.scheme)
 
     def _build_inputs(self, batch, t):
-        # Assumes homogenous agents with flat observations.
+        # Assumes homogeneous agents with flat observations.
         # Other MACs might want to e.g. delegate building inputs to each agent
         bs = batch.batch_size
         inputs = []

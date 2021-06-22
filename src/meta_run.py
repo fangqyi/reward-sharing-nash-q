@@ -267,7 +267,7 @@ def run_distance_sequential(args, logger):
         z_train_cnt += 1
 
         t_max = args.env_steps_every_z * args.total_z_training_steps
-        logger.log_stat("avg_social_welfare", (total_val.item()), runner.t_env)
+        logger.log_stat("avg_social_welfare", (total_val.item()/args.n_agents), runner.t_env)
         logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
         logger.console_logger.info("Estimated time left: {}. Time passed: {}".format(
             time_left(last_time, last_test_T, runner.t_env, t_max), time_str(time.time() - start_time)))
