@@ -8,6 +8,7 @@ from social_dilemmas.constants import CLEANUP_MAP
 from social_dilemmas.envs.cleanup import CleanupEnv
 
 from env.multiagentenv import MultiAgentEnv
+from utils.utils import ConfigDict
 
 
 class Cleanup(MultiAgentEnv):
@@ -54,6 +55,12 @@ class Cleanup(MultiAgentEnv):
             ascii_map = maps.CLEANUP_SMALL_SYM
         elif self.args.map_name == 'cleanup_10x10_sym':
             ascii_map = maps.CLEANUP_10x10_SYM
+
+        cleanup_params = ConfigDict()
+        cleanup_params.appleRespawnProbability = args.appleRespawnProbability
+        cleanup_params.thresholdDepletion = args.thresholdDepletion
+        cleanup_params.thresholdRestoration = args.thresholdRestoration
+        cleanup_params.wasteSpawnProbability = args.wasteSpawnProbability
 
         self.env = CleanupEnv(ascii_map=ascii_map,
                               num_agents=self.n_agents, render=False,

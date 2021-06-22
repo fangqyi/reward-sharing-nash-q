@@ -1,0 +1,32 @@
+n_agents: 2
+# ---------- For 10x10 map cleanup_10x10_sym ----------
+# obs_height : 15
+# obs_width : 15
+# ---------- For 7x7 map cleanup_small_sym ------------
+obs_height: 9
+obs_width: 9
+# -----------------------------------
+episode_limit: 50
+cleaning_penalty:
+disable_left_right_action: False
+disable_rotation_action: True
+# If T, reward function takes in 1-hot representation of
+# whether the other agent used the cleaning beam
+# Else, observe the full 1-hot action of other agent
+obs_cleaned_1hot: True
+map_name: 'cleanup_small_sym'
+shuffle_spawn: False
+view_size: 4 # 7
+random_orientation: False
+cleanup_params:
+beam_width: 3
+# if not None, a fixed global reference frame is used for all agents
+# global_ref_point = [4, 4]  # cleanup_10x10
+# global_ref_point = [3, 3]  # for cleanup_small
+global_ref_point: None
+r_multiplier: 2.0
+# --------------cleanup_params---------------------
+appleRespawnProbability : 0.5  # 10x10 0.3 | small 0.5
+thresholdDepletion : 0.6  # 10x10 0.4 | small 0.6
+thresholdRestoration : 0.0  # 10x10 0.0 | small 0.0
+wasteSpawnProbability : 0.5  # 10x10 0.5 | small 0.5
