@@ -4,7 +4,7 @@
 meta_type: "normal"
 runner: "episode" # Runs 1 env for an episode
 mac: "shared" # Basic controller
-env: "surviving" # Environment name
+env: "cleanup" # Environment name
 env_args: {} # Arguments for the environment
 learner: q_learner
 batch_size_run: 1 # Number of environments to run in parallel
