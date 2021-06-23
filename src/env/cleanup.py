@@ -81,8 +81,10 @@ class Cleanup(MultiAgentEnv):
 
     def process_obs(self, obs_dict):
 
-        return [obs / 256.0 for obs in list(obs_dict.values())]
-
+        processed_obs = [obs / 256.0 for obs in list(obs_dict.values())]
+        print(processed_obs[0])
+        return processed_obs
+    
     def reset(self):
         """Resets the environemnt.
 
