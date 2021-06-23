@@ -32,4 +32,6 @@ target_update_interval: 200
 # use the Q_Learner to train
 agent_output_type: "q"
 
+is_obs_image: False
+rnn_hidden_dim: 64
 name: "pq_dgn_q_learning"
