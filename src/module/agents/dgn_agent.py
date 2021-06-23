@@ -56,9 +56,9 @@ class DGNAgent(nn.Module):
         self.args = args
         if args.is_obs_image:
             c, h, w = scheme["obs"]["vshape"]
-            if h != args.obs_height or w != args.obs_weight:
-                print("input shape not matched with specified obs height or weight in args")
-                raise ValueError
+            # if h != args.obs_height or w != args.obs_weight:
+            #     print("input shape not matched with specified obs height or weight in args")
+            #     raise ValueError
             self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
             input_shape = self._get_vec_input_shape(scheme) + args.conv_out_dim
         else:
