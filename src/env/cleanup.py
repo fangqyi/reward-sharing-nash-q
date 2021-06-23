@@ -16,8 +16,8 @@ class Cleanup(MultiAgentEnv):
 
         self.name = 'ssd'
         self.args = args
-        self.dim_obs = [self.args.obs_height,
-                        self.args.obs_width, 3]
+        self.dim_obs = [3, self.args.obs_height,
+                        self.args.obs_width]
         self.episode_limit = self.args.episode_limit
 
         self.cleaning_penalty = self.args.cleaning_penalty

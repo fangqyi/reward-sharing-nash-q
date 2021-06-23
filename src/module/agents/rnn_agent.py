@@ -42,9 +42,9 @@ class RNNAgentImageVec(nn.Module):
         image_input_shape, vec_input_shape = input_shape
         self.args = args
         c, h, w = image_input_shape
-        if h != args.obs_height or w != args.obs_weight:
-            print("input shape not matched with specified obs height or weight in args")
-            raise ValueError
+        # if h != args.obs_height or w != args.obs_weight:
+        #     print("input shape not matched with specified obs height or weight in args")
+        #     raise ValueError
         self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
         input_dim = args.conv_out_dim + vec_input_shape
         self.fc1 = nn.Linear(input_dim, args.rnn_hidden_dim)
