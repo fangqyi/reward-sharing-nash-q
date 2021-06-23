@@ -54,13 +54,26 @@ class DGNAgent(nn.Module):
     def __init__(self, args, scheme):
         super(DGNAgent, self).__init__()
         self.args = args
-        input_shape = self._get_input_shape(scheme)
+        if args.is_obs_image:
+            c, h, w = scheme["obs"]["vshape"]
+            if h != args.obs_height or w != args.obs_weight:
+                print("input shape not matched with specified obs height or weight in args")
+                raise ValueError
+            self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
+            input_shape = self._get_vec_input_shape(scheme) + args.conv_out_dim
+        else:
+            input_shape = self._get_input_shape(scheme)
+        self.fc1 = nn.Linear(input_shape, args.rnn_hidden_dim)
         self.encoder = Encoder(input_shape, args.hidden_dim)
         self.att_1 = AttModel(args.n_agents, args.hidden_dim, args.hidden_dim, args.hidden_dim)
         self.att_2 = AttModel(args.n_agents, args.hidden_dim, args.hidden_dim, args.hidden_dim)
         self.q_net = Q_Net(args.hidden_dim, args.n_actions)
 
     def forward(self, x, mask, _):
+        image_x, vec_x = x
+        if self.args.is_obs_image:
+            x = F.relu(self.conv(image_x))
+            x = torch.cat([x, vec_x], axis=-1)
         x = x.view(mask.shape[0], self.args.n_agents, -1)
         h1 = self.encoder(x)
         h2 = self.att_1(h1, mask)
@@ -69,7 +82,11 @@ class DGNAgent(nn.Module):
         return q, []
 
     def _get_input_shape(self, scheme):
-        input_shape = scheme["obs"]["vshape"]
+        input_shape = scheme["obs"]["vshape"] + self._get_vec_input_shape(scheme)
+        return input_shape
+
+    def _get_vec_input_shape(self, scheme):
+        input_shape = 0
         if self.args.obs_last_action:
             input_shape += scheme["actions_onehot"]["vshape"][0]
         if self.args.obs_agent_id:
