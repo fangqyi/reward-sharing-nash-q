@@ -4,7 +4,6 @@ Code adapted from https://github.com/011235813/lio/blob/master/lio/env/ssd.py
 """
 
 from lio.env import maps
-from sequential_social_dilemma_games.social_dilemmas.constants import CLEANUP_MAP
 from sequential_social_dilemma_games.social_dilemmas.envs.cleanup import CleanupEnv
 
 from env.multiagentenv import MultiAgentEnv
