@@ -23,7 +23,7 @@ beam_width: 3
 # if not None, a fixed global reference frame is used for all agents
 # global_ref_point = [4, 4]  # cleanup_10x10
 # global_ref_point = [3, 3]  # for cleanup_small
-global_ref_point: None
+global_ref_point: [3, 3]
 r_multiplier: 2.0
 # --------------cleanup_params---------------------
 appleRespawnProbability : 0.5  # 10x10 0.3 | small 0.5
