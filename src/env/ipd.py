@@ -17,6 +17,7 @@ class IteratedPrisonerDilemma(MultiAgentEnv):
         self.args = args
         if args.n_agent != self.NUM_AGENTS:
             print("Warning: Iterated prisoner dilemma currently only supports 2-agent environment, arg.n_agent = {}".format(args.n_agent))
+            raise ValueError
         self.episode_limit = args.episode_limit
         self.payout_mat = np.array([[-1., 0.], [-3., -2.]])
         self.action_space = self.NUM_ACTIONS
