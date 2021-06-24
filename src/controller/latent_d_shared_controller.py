@@ -52,7 +52,6 @@ class BasicLatentMAC:
         if self.args.agent == "dgn_agent":
             agent_outs, self.hidden_states = self.agent(agent_inputs, mask, self.hidden_states)
         else:
-            print(self.hidden_states)
             agent_outs, self.hidden_states = self.agent(agent_inputs, self.hidden_states)
         # Softmax the agent outputs if they're policy logits
         if self.agent_output_type == "pi_logits":  # (0, 1) -> (-inf, inf)
@@ -80,10 +79,7 @@ class BasicLatentMAC:
         return agent_outs.view(ep_batch.batch_size, self.n_agents, -1)
 
     def init_hidden(self, batch_size):
-        print("init hidden done")
-        print(self.agent.__dict__)
-        if 'init_hidden' in self.agent.__dict__:
-            print("init hidden done")
+        if 'init_hidden' in dir(self.agent):
             self.hidden_states = self.agent.init_hidden().unsqueeze(0).expand(batch_size, self.n_agents, -1)  # bav
 
     def parameters(self):
