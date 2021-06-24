@@ -80,6 +80,7 @@ class BasicLatentMAC:
 
     def init_hidden(self, batch_size):
         if 'init_hidden' in self.agent.__dict__:
+            print("init hidden done")
             self.hidden_states = self.agent.init_hidden().unsqueeze(0).expand(batch_size, self.n_agents, -1)  # bav
 
     def parameters(self):
