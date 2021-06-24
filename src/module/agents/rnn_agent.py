@@ -39,7 +39,7 @@ class RNNAgent(nn.Module):
     def _get_conv_output_shape(self):  # ignore padding
         h = (self.args.obs_height-self.args.kernel_size)/self.args.stride + 1
         w = (self.args.obs_width-self.args.kernel_size)/self.args.stride + 1
-        return h*w*self.args.conv_out_dim
+        return int(h*w*self.args.conv_out_dim)
 
 
 class RNNAgentImageVec(nn.Module):
@@ -75,4 +75,4 @@ class RNNAgentImageVec(nn.Module):
     def _get_conv_output_shape(self):  # ignore padding
         h = (self.args.obs_height-self.args.kernel_size)/self.args.stride + 1
         w = (self.args.obs_width-self.args.kernel_size)/self.args.stride + 1
-        return h*w*self.args.conv_out_dim
+        return int(h*w*self.args.conv_out_dim)
