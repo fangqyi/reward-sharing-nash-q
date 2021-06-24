@@ -73,6 +73,8 @@ class DGNAgent(nn.Module):
         image_x, vec_x = x
         if self.args.is_obs_image:
             x = F.relu(self.conv(image_x))
+            print(x.shape)
+            print(vec_x.shape)
             x = torch.cat([x, vec_x], axis=-1)
         x = x.view(mask.shape[0], self.args.n_agents, -1)
         h1 = self.encoder(x)
