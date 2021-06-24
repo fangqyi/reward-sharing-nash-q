@@ -39,5 +39,5 @@ is_obs_image: True
 kernel_size: 3
 stride: 1
 conv_out_dim: 8
-rnn_hidden_dim: 128
+rnn_hidden_dim: 64
 name: "pq_dgn_q_learning"
