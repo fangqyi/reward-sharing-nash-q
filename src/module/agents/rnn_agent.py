@@ -13,6 +13,7 @@ class RNNAgent(nn.Module):
                 print("input shape not matched with specified obs height or weight in args")
                 raise ValueError
             self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
+            self.flatten = nn.Flatten()
             self.fc1 = nn.Linear(args.rnn_hidden_dim, args.rnn_hidden_dim)
         else:
             self.fc1 = nn.Linear(input_shape, args.rnn_hidden_dim)
@@ -25,7 +26,7 @@ class RNNAgent(nn.Module):
 
     def forward(self, inputs, hidden_state):
         if self.args.is_obs_image:
-            x = nn.Flatten(F.relu(self.conv(inputs)))
+            x = self.flatten(F.relu(self.conv(inputs)))
             x = F.relu(self.fc1(x))
         else:
             x = F.relu(self.fc1(inputs))

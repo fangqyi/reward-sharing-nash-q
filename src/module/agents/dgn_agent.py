@@ -60,6 +60,7 @@ class DGNAgent(nn.Module):
             #     print("input shape not matched with specified obs height or weight in args")
             #     raise ValueError
             self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
+            self.flatten = nn.Flatten()
             input_shape = self._get_vec_input_shape(scheme) + args.conv_out_dim
         else:
             input_shape = self._get_input_shape(scheme)
@@ -73,7 +74,7 @@ class DGNAgent(nn.Module):
         image_x, vec_x = x
         if self.args.is_obs_image:
             x = F.relu(self.conv(image_x))
-            x = nn.Flatten(x)
+            x = self.flatten(x)
             print(x.shape)
             print(vec_x.shape)
             x = torch.cat([x, vec_x], axis=-1)
