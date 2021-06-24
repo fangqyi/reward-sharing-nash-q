@@ -24,3 +24,5 @@ target_update_interval: 200
 agent_output_type: "q"
 
 name: "pq_dgn_q_learning"
+
+is_obs_image: False

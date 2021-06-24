@@ -103,20 +103,30 @@ class BasicLatentMAC:
         self.agent = agent_REGISTRY[self.args.agent](self.args, self.scheme)
 
     def _build_inputs(self, batch, t):
+        # Need to consider environments that uses image as output
         # Assumes homogenous agents with flat observations.
         # Other MACs might want to e.g. delegate building inputs to each agent
         bs = batch.batch_size
         inputs = []
-        inputs.append(batch["obs"][:, t])  # b1av
+        vec_inputs = []
         if self.args.obs_last_action:
             if t == 0:
-                inputs.append(th.zeros_like(batch["actions_onehot"][:, t]))
+                vec_inputs.append(th.zeros_like(batch["actions_onehot"][:, t]))
             else:
-                inputs.append(batch["actions_onehot"][:, t-1])
+                vec_inputs.append(batch["actions_onehot"][:, t-1])
         if self.args.obs_agent_id:
-            inputs.append(th.eye(self.n_agents, device=batch.device).unsqueeze(0).expand(bs, -1, -1))
-        inputs.append(self.sample_batch_latent_var(batch, t).unsqueeze(1).expand(-1, self.n_agents, -1))
-        inputs = th.cat([x.reshape(bs*self.n_agents, -1) for x in inputs], dim=1)
+            vec_inputs.append(th.eye(self.n_agents, device=batch.device).unsqueeze(0).expand(bs, -1, -1))
+        vec_inputs.append(self.sample_batch_latent_var(batch, t).unsqueeze(1).expand(-1, self.n_agents, -1))
+        obs = batch["obs"][:, t]
+        if self.args.is_obs_image:
+            obs = obs.reshape(bs*self.n_agents, obs.shape[-3], obs.shape[-2], obs.shape[-1])  # flatten the first two dims
+            inputs.append(obs)
+            vec_inputs = th.cat([x.reshape(bs * self.n_agents, -1) for x in vec_inputs], dim=1)
+            inputs.append(vec_inputs)  # return two objects as nn inputs
+        else:
+            inputs.append(obs)
+            inputs.extend(vec_inputs)  # return one, catting obs and other agent info together
+            inputs = th.cat([x.reshape(bs*self.n_agents, -1) for x in inputs], dim=1)
         return inputs
 
     def _get_latent_shapes(self):
