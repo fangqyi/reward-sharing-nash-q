@@ -79,7 +79,7 @@ class Cleanup(MultiAgentEnv):
         self.steps = 0
 
     def process_obs(self, obs_dict):  # adjusted the dims for convnet
-        print(obs_dict)
+        print(type(obs_dict))
         processed_obs = [obs / 256.0 for obs in list(obs_dict.values())]
         processed_obs = np.moveaxis(np.array(processed_obs), -1, 1)
         return processed_obs
