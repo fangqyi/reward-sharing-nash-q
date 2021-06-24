@@ -146,10 +146,10 @@ class DistEpisodeRunner:
         cur_returns = self.test_returns if test_mode else self.train_returns
         cur_dis_returns = []
         log_prefix = "test_" if test_mode else ""
-        print("cur_stats")
-        print(cur_stats)
-        print("env_info")
-        print(env_info)
+        # print("cur_stats")
+        # print(cur_stats)
+        # print("env_info")
+        # print(env_info)
         for k in set(cur_stats) | set(env_info):
             if isinstance(env_info.get(k), list):
                 cur_stats.update({k: cur_stats.get(k, []) + env_info.get(k, 0)})
@@ -193,7 +193,7 @@ class DistEpisodeRunner:
         dis_returns.clear()
 
         for k, v in stats.items():
-            if k != "n_episodes":
+            if k != "n_episodes" and not isinstance(v, list):
                 self.logger.log_stat(prefix + k + "_mean", v / stats["n_episodes"], self.t_env)
         stats.clear()
 
