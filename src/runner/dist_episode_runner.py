@@ -81,6 +81,7 @@ class DistEpisodeRunner:
                     # "state": [self.env.get_state()],
                     "avail_actions": [self.env.get_avail_actions()],
                     "obs": [self.env.get_obs()],
+                    "adjacent_agents": [[[1]*self.n_agents]*self.n_agents],
                     "z_p": z_p,
                     "z_q": z_q,
                 }
@@ -133,6 +134,7 @@ class DistEpisodeRunner:
                 # "state": [self.env.get_state()],
                 "avail_actions": [self.env.get_avail_actions()],
                 "obs": [self.env.get_obs()],
+                "adjacent_agents": [[[1] * self.n_agents] * self.n_agents],
                 "z_p": z_p,
                 "z_q": z_q,
             }

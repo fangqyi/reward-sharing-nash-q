@@ -49,8 +49,10 @@ class BasicLatentMAC:
         agent_inputs = self._build_inputs(ep_batch, t)
         avail_actions = ep_batch["avail_actions"][:, t]
         mask = ep_batch["adjacent_agents"][:, t]
-        agent_outs, self.hidden_states = self.agent(agent_inputs, mask, self.hidden_states)
-
+        if self.args == "dgn_agent":
+            agent_outs, self.hidden_states = self.agent(agent_inputs, mask, self.hidden_states)
+        else:
+            agent_outs, self.hidden_states = self.agent(agent_inputs, self.hidden_states)
         # Softmax the agent outputs if they're policy logits
         if self.agent_output_type == "pi_logits":  # (0, 1) -> (-inf, inf)
 
