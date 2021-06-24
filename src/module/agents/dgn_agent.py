@@ -73,6 +73,7 @@ class DGNAgent(nn.Module):
         image_x, vec_x = x
         if self.args.is_obs_image:
             x = F.relu(self.conv(image_x))
+            x = nn.Flatten(x)
             print(x.shape)
             print(vec_x.shape)
             x = torch.cat([x, vec_x], axis=-1)
