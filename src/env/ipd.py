@@ -24,6 +24,7 @@ class IteratedPrisonerDilemma(MultiAgentEnv):
         self.observation_space = self.NUM_STATES
         self._init_obs()
         self.step_count = None
+        self.observations = None
 
     def _init_obs(self):
         init_state = np.zeros(self.NUM_STATES)
@@ -46,8 +47,9 @@ class IteratedPrisonerDilemma(MultiAgentEnv):
         self.observations = [state, state]
 
         done = (self.step_count == self.episode_limit)
+        info = {}
 
-        return self.observations, rewards, done
+        return rewards, done, info
 
     def get_obs(self):
         return self.observations

@@ -62,13 +62,14 @@ class EscapeRoom(MultiAgentEnv):
             actor.act(actions[idx]) #, given_rewards[idx])
         self.steps += 1
         self.state = [actor.position for actor in self.actors]
-        list_obs_next = self.get_obs()
+        # list_obs_next = self.get_obs()
 
         # Terminate if (door is open and some agent ended up at door)
         # or reach max_steps
         done = (door_open and 2 in self.state) or self.steps == self.episode_limit
+        info = {}
 
-        return list_obs_next, rewards, done
+        return rewards, done, info
 
     def reset(self):
         for actor in self.actors:

@@ -109,7 +109,7 @@ class Cleanup(MultiAgentEnv):
         obs_next, rewards, dones, info = self.env.step(actions_dict)
         self.steps += 1
 
-        obs_next = self.process_obs(obs_next)
+        self.obs = self.process_obs(obs_next)
         rewards = list(rewards.values())
         if self.cleaning_penalty > 0:
             for idx in range(self.n_agents):
@@ -119,7 +119,7 @@ class Cleanup(MultiAgentEnv):
         # done = dones['__all__']  # apparently they hardcode done to False
         done = dones['__all__'] or self.steps == self.episode_limit
 
-        return obs_next, rewards, done, info
+        return rewards, done, info
 
     def render(self):
         self.env.render()
