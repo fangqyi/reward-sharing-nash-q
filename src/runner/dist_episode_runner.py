@@ -184,18 +184,12 @@ class DistEpisodeRunner:
     def _log(self, returns, dis_returns, stats, prefix):
         # self.logger.console_logger.info("Agent rewards:")
         for agent_idx in range(self.n_agents):
-            print("dis")
-            print(len(dis_returns))
-            print(dis_returns)
             agent_returns = [dis_returns[t][agent_idx] for t in range(len(dis_returns))]
             self.logger.log_stat(prefix + "agent {} post-sharing return_mean".format(agent_idx), np.mean(agent_returns), self.t_env)
             self.logger.log_stat(prefix + "agent {} post-sharing return_std".format(agent_idx), np.std(agent_returns), self.t_env)
 
         for agent_idx in range(self.n_agents):
             agent_returns = [returns[t][agent_idx] for t in range(len(returns))]
-            print("ret")
-            print(len(returns))
-            print(returns)
             self.logger.log_stat(prefix + "agent {} original return_mean".format(agent_idx), np.mean(agent_returns), self.t_env)
             self.logger.log_stat(prefix + "agent {} original return_std".format(agent_idx), np.std(agent_returns), self.t_env)
 
