@@ -66,6 +66,7 @@ class MLPMultiGaussianEncoder(nn.Module):
         prior = torch.distributions.Normal(torch.zeros(self.output_size), torch.ones(self.output_size))
         posteriors = [torch.distributions.Normal(mu, torch.sqrt(var)) for mu, var in
                       zip(torch.unbind(self.z_means), torch.unbind(self.z_vars))]
+        print(prior.device)
         if prior.device != posteriors[0].device:  # horrible shotgun fix
             if prior.device == 'cpu':
                 prior.to(posteriors[0].device)
