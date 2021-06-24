@@ -5,6 +5,7 @@ Code adapted from https://github.com/TonghanWang/ROMA
 from collections import defaultdict
 import logging
 import numpy as np
+import torch
 
 class Logger:
     def __init__(self, console_logger):
@@ -56,8 +57,10 @@ class Logger:
                 continue
             i += 1
             window = 5 if k != "epsilon" else 1
-            print(k)
-            item = "{:.4f}".format(np.mean([x[1] for x in self.stats[k][-window:]]))
+            if isinstance(self.stats[k][-window:][0], torch.Tensor):  # another shotgun fix
+                item = "{:.4f}".format(np.mean([x[1].item() for x in self.stats[k][-window:]]))
+            else:
+                item = "{:.4f}".format(np.mean([x[1] for x in self.stats[k][-window:]]))
             log_str += "{:<25}{:>8}".format(k + ":", item)
             log_str += "\n" if i % 4 == 0 else "\t"
         self.console_logger.info(log_str)
