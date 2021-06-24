@@ -14,7 +14,7 @@ class RNNAgent(nn.Module):
                 raise ValueError
             self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
             self.flatten = nn.Flatten()
-            self.fc1 = nn.Linear(args.rnn_hidden_dim, args.rnn_hidden_dim)
+            self.fc1 = nn.Linear(self._get_conv_output_shape(), args.rnn_hidden_dim)
         else:
             self.fc1 = nn.Linear(input_shape, args.rnn_hidden_dim)
         self.rnn = nn.GRUCell(args.rnn_hidden_dim, args.rnn_hidden_dim)
@@ -36,6 +36,11 @@ class RNNAgent(nn.Module):
         q = self.fc2(h)
         return q, h
 
+    def _get_conv_output_shape(self):  # ignore padding
+        h = (self.args.obs_height-self.args.kernel_size)/self.args.stride + 1
+        w = (self.args.obs_width-self.args.kernel_size)/self.args.stride + 1
+        return h*w*self.args.conv_out_dim
+
 
 class RNNAgentImageVec(nn.Module):
     def __init__(self, input_shape, output_shape, args):
@@ -47,7 +52,7 @@ class RNNAgentImageVec(nn.Module):
         #     print("input shape not matched with specified obs height or weight in args")
         #     raise ValueError
         self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
-        input_dim = args.conv_out_dim + vec_input_shape
+        input_dim = self._get_conv_output_shape() + vec_input_shape
         self.fc1 = nn.Linear(input_dim, args.rnn_hidden_dim)
         self.rnn = nn.GRUCell(args.rnn_hidden_dim, args.rnn_hidden_dim)
         self.fc2 = nn.Linear(args.rnn_hidden_dim, output_shape)
@@ -66,3 +71,8 @@ class RNNAgentImageVec(nn.Module):
         #h = F.relu(self.fc3(h))
         q = self.fc2(h)
         return q, h
+
+    def _get_conv_output_shape(self):  # ignore padding
+        h = (self.args.obs_height-self.args.kernel_size)/self.args.stride + 1
+        w = (self.args.obs_width-self.args.kernel_size)/self.args.stride + 1
+        return h*w*self.args.conv_out_dim

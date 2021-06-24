@@ -61,10 +61,10 @@ class DGNAgent(nn.Module):
             #     raise ValueError
             self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
             self.flatten = nn.Flatten()
-            input_shape = self._get_vec_input_shape(scheme) + args.conv_out_dim
+            input_shape = self._get_vec_input_shape(scheme) + self._get_conv_output_shape()
         else:
             input_shape = self._get_input_shape(scheme)
-        self.fc1 = nn.Linear(input_shape, args.rnn_hidden_dim)
+        # self.fc1 = nn.Linear(input_shape, args.rnn_hidden_dim)
         self.encoder = Encoder(input_shape, args.hidden_dim)
         self.att_1 = AttModel(args.n_agents, args.hidden_dim, args.hidden_dim, args.hidden_dim)
         self.att_2 = AttModel(args.n_agents, args.hidden_dim, args.hidden_dim, args.hidden_dim)
@@ -102,3 +102,7 @@ class DGNAgent(nn.Module):
             input_shape += self.args.latent_var_dim
         return input_shape
 
+    def _get_conv_output_shape(self):  # ignore padding
+        h = (self.args.obs_height-self.args.kernel_size)/self.args.stride + 1
+        w = (self.args.obs_width-self.args.kernel_size)/self.args.stride + 1
+        return h*w*self.args.conv_out_dim
