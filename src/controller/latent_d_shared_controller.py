@@ -49,7 +49,7 @@ class BasicLatentMAC:
         agent_inputs = self._build_inputs(ep_batch, t)
         avail_actions = ep_batch["avail_actions"][:, t]
         mask = ep_batch["adjacent_agents"][:, t]
-        if self.args == "dgn_agent":
+        if self.args.agent == "dgn_agent":
             agent_outs, self.hidden_states = self.agent(agent_inputs, mask, self.hidden_states)
         else:
             agent_outs, self.hidden_states = self.agent(agent_inputs, self.hidden_states)
