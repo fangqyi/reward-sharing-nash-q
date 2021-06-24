@@ -74,6 +74,7 @@ class DGNAgent(nn.Module):
         image_x, vec_x = x
         if self.args.is_obs_image:
             x = F.relu(self.conv(image_x))
+            print(x.shape)
             x = self.flatten(x)
             print(x.shape)
             print(vec_x.shape)
