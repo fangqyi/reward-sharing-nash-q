@@ -63,10 +63,8 @@ class MLPMultiGaussianEncoder(nn.Module):
         self.sample_z()
 
     def compute_kl_div(self):
-        print(torch.zeros(self.output_size).device)
-        print([(mu.device, var.device) for mu, var in
-                      zip(torch.unbind(self.z_means), torch.unbind(self.z_vars))])
-        prior = torch.distributions.Normal(torch.zeros(self.output_size), torch.ones(self.output_size))
+        device = self.z_means[0].device
+        prior = torch.distributions.Normal(torch.zeros(self.output_size).to(device), torch.ones(self.output_size).to(device))
         posteriors = [torch.distributions.Normal(mu, torch.sqrt(var)) for mu, var in
                       zip(torch.unbind(self.z_means), torch.unbind(self.z_vars))]
         # print(prior.device)
