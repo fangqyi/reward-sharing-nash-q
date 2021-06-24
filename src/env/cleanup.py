@@ -90,7 +90,7 @@ class Cleanup(MultiAgentEnv):
         Returns:
             List of agent observations
         """
-        self.obs = self.env.reset()
+        self.obs = self.process_obs(self.env.reset())
         self.steps = 0
 
     def step(self, actions):
