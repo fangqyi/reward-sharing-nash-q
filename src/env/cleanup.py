@@ -2,7 +2,7 @@
 Wrapper around Sequential Social Dilemma environment.
 Code adapted from https://github.com/011235813/lio/blob/master/lio/env/ssd.py
 """
-
+import torch
 from lio.env import maps
 from social_dilemmas.envs.cleanup import CleanupEnv
 
@@ -79,12 +79,9 @@ class Cleanup(MultiAgentEnv):
         self.obs = None
         self.steps = 0
 
-    def process_obs(self, obs_dict):
-
+    def process_obs(self, obs_dict):  # adjusted the dims for convnet
         processed_obs = [obs / 256.0 for obs in list(obs_dict.values())]
-        print("process_obs")
-        print(len(processed_obs))
-        print(processed_obs[0])
+        processed_obs = torch.tensor(processed_obs).permute(0, 3, 1, 2)
         return processed_obs
 
     def reset(self):
