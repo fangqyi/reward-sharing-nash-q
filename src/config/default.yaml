@@ -48,4 +48,5 @@ obs_last_action: False
 repeat_id: 1
 label: "default_label"
 
+device: "cuda:0"
 device_num: 0

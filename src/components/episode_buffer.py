@@ -104,7 +104,7 @@ class EpisodeBatch:
                 raise KeyError("{} not found in transition or episode data".format(k))
 
             dtype = self.scheme[k].get("dtype", th.float32)
-            print("crash: k {}, v{}".format(k, v))
+            # print("crash: k {}, v{}".format(k, v))
             # print("shape v :{}, target: {}".format(v.shape, target[k].shape))
             if not isinstance(v, th.Tensor):
                 v = th.tensor(v, dtype=dtype, device=self.device)
