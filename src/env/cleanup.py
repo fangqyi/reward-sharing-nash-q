@@ -83,6 +83,7 @@ class Cleanup(MultiAgentEnv):
 
         processed_obs = [obs / 256.0 for obs in list(obs_dict.values())]
         print("process_obs")
+        print(len(obs))
         print(processed_obs[0])
         return processed_obs
 
