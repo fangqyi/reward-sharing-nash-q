@@ -20,10 +20,6 @@ class Cleanup(MultiAgentEnv):
                         self.args.obs_width]
         self.episode_limit = self.args.episode_limit
         self.cleaning_penalty = self.args.cleaning_penalty
-        print(self.episode_limit)
-        print(self.args.episode_limit)
-        print(self.cleaning_penalty)
-        print(self.args.cleaning_penalty)
         # Original space (not necessarily in this order, see
         # the original ssd files):
         # no-op, up, down, left, right, turn-ccw, turn-cw, penalty, clean
