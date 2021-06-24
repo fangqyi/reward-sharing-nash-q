@@ -29,7 +29,9 @@ class DistEpisodeRunner:
         self.t_env = 0
 
         self.train_returns = []
+        self.train_dis_returns = []
         self.test_returns = []
+        self.test_dis_returns = []
         self.train_stats = {}
         self.test_stats = {}
 
@@ -146,7 +148,7 @@ class DistEpisodeRunner:
 
         cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
-        cur_dis_returns = []
+        cur_dis_returns = self.test_dis_returns if test_mode else self.train_dis_returns
         log_prefix = "test_" if test_mode else ""
         # print("cur_stats")
         # print(cur_stats)
