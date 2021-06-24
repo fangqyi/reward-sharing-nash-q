@@ -44,20 +44,16 @@ class RNNAgent(nn.Module):
 
 
 class RNNAgentImageVec(nn.Module):
-    def __init__(self, input_shape, output_shape, args):
+    def __init__(self, args, scheme):
         super(RNNAgentImageVec, self).__init__()
-        image_input_shape, vec_input_shape = input_shape
         self.args = args
-        c, h, w = image_input_shape
-        # if h != args.obs_height or w != args.obs_weight:
-        #     print("input shape not matched with specified obs height or weight in args")
-        #     raise ValueError
-        self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size,
-                              stride=args.stride)
-        input_dim = self._get_conv_output_shape() + vec_input_shape
-        self.fc1 = nn.Linear(input_dim, args.rnn_hidden_dim)
+        c, h, w = scheme["obs"]["vshape"]
+        self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
+        self.flatten = nn.Flatten()
+        input_shape = self._get_vec_input_shape(scheme) + self._get_conv_output_shape()
+        self.fc1 = nn.Linear(input_shape, args.rnn_hidden_dim)
         self.rnn = nn.GRUCell(args.rnn_hidden_dim, args.rnn_hidden_dim)
-        self.fc2 = nn.Linear(args.rnn_hidden_dim, output_shape)
+        self.fc2 = nn.Linear(args.rnn_hidden_dim, args.n_actions)
 
     def init_hidden(self):
         # make hidden states on same device as model
@@ -78,3 +74,19 @@ class RNNAgentImageVec(nn.Module):
         h = (self.args.obs_height - self.args.kernel_size) / self.args.stride + 1
         w = (self.args.obs_width - self.args.kernel_size) / self.args.stride + 1
         return int(h * w * self.args.conv_out_dim)
+
+    def _get_input_shape(self, scheme):
+        input_shape = scheme["obs"]["vshape"] + self._get_vec_input_shape(scheme)
+        return input_shape
+
+    def _get_vec_input_shape(self, scheme):
+        input_shape = 0
+        if self.args.obs_last_action:
+            input_shape += scheme["actions_onehot"]["vshape"][0]
+        if self.args.obs_agent_id:
+            input_shape += self.args.n_agents
+        if self.args.meta_type == "pq":
+            input_shape += self.args.n_agents*self.args.n_agents*2
+        if self.args.meta_type == "distance_latent":
+            input_shape += self.args.latent_var_dim
+        return input_shape
