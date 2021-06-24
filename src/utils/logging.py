@@ -57,8 +57,8 @@ class Logger:
                 continue
             i += 1
             window = 5 if k != "epsilon" else 1
-            print(k)
-            print(type(self.stats[k][-window:][0][1]))
+            # print(k)
+            # print(type(self.stats[k][-window:][0][1]))
             if isinstance(self.stats[k][-window:][0][1], torch.Tensor):  # another shotgun fix
                 item = "{:.4f}".format(np.mean([x[1].item() for x in self.stats[k][-window:]]))
             else:
