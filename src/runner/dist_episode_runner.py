@@ -150,7 +150,11 @@ class DistEpisodeRunner:
         print(cur_stats)
         print("env_info")
         print(env_info)
-        cur_stats.update({k: cur_stats.get(k, 0) + env_info.get(k, 0) for k in set(cur_stats) | set(env_info)})
+        for k in set(cur_stats) | set(env_info):
+            if isinstance(env_info.get(k), list):
+                cur_stats.update({k: cur_stats.get(k, []) + env_info.get(k, 0)})
+            else:
+                cur_stats.update({k: cur_stats.get(k, 0) + env_info.get(k, 0)})
         cur_stats["n_episodes"] = 1 + cur_stats.get("n_episodes", 0)
         cur_stats["ep_length"] = self.t + cur_stats.get("ep_length", 0)
 
