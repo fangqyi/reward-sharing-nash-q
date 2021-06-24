@@ -61,7 +61,7 @@ class RNNAgentImageVec(nn.Module):
 
     def forward(self, inputs, hidden_state):
         image_inputs, vec_inputs = inputs
-        x = nn.Flatten(F.relu(self.conv(image_inputs)))
+        x = self.flatten(F.relu(self.conv(image_inputs)))
         x = torch.cat([x, vec_inputs], axis=-1)
         x = F.relu(self.fc1(x))
         h_in = hidden_state.reshape(-1, self.args.rnn_hidden_dim)
