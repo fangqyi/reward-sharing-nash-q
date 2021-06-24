@@ -39,7 +39,7 @@ optim_eps: 0.00001 # RMSProp epsilon
 grad_norm_clip: 10 # Reduce magnitude of gradients above this L2 norm
 
 # --- Agent parameters ---
-agent: "dgn_agent" # "rnn_agent_image_vec" # Default rnn agent
+# agent: "dgn_agent" # "rnn_agent_image_vec" # Default rnn agent
 hidden_dim: 64
 obs_agent_id: True
 obs_last_action: False
