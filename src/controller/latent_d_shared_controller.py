@@ -28,7 +28,8 @@ class BasicLatentMAC:
         chosen_actions = self.action_selector.select_action(agent_outputs[bs], avail_actions[bs], t_env, test_mode=test_mode)
         return chosen_actions.tolist()
 
-    def sample_batch_latent_var(self, batch, t):
+    def sample_batch_latent_var(self, batch, t=None):
+        # infer z that encodes the information about the current reward-sharing scheme
         # z_q, z_p: [n_agents][latent_relation_space_dim]
         inputs = self._build_latent_encoder_input(batch, t)
         latent_var = self.latent_encoder.infer_posterior(inputs)
@@ -36,9 +37,9 @@ class BasicLatentMAC:
             latent_var = latent_var.unsqueeze(0)
         return latent_var
 
-    # def sample_latent_var(self, z_q, z_p):
-    #     inputs = th.cat([x.reshape(-1) for x in [z_q, z_p]], dim=1)
-    #     return self.latent_encoder.infer_posterior(inputs)
+    def sample_latent_var(self, z_q, z_p):
+        inputs = th.cat([x.reshape(-1) for x in [z_q, z_p]], dim=-1)
+        return self.latent_encoder.infer_posterior(inputs)
 
     def compute_kl_div(self):
         div = self.latent_encoder.compute_kl_div()
@@ -53,9 +54,9 @@ class BasicLatentMAC:
             agent_outs, self.hidden_states = self.agent(agent_inputs, mask, self.hidden_states)
         else:
             agent_outs, self.hidden_states = self.agent(agent_inputs, self.hidden_states)
+
         # Softmax the agent outputs if they're policy logits
         if self.agent_output_type == "pi_logits":  # (0, 1) -> (-inf, inf)
-
             if getattr(self.args, "mask_before_softmax", True):
                 # Make the logits for unavailable actions very negative to minimise their affect on the softmax
                 reshaped_avail_actions = avail_actions.reshape(ep_batch.batch_size * self.n_agents, -1)
@@ -105,7 +106,6 @@ class BasicLatentMAC:
         self.agent = agent_REGISTRY[self.args.agent](self.args, self.scheme)
 
     def _build_inputs(self, batch, t):
-        # Need to consider environments that uses image as output
         # Assumes homogenous agents with flat observations.
         # Other MACs might want to e.g. delegate building inputs to each agent
         bs = batch.batch_size
@@ -119,6 +119,8 @@ class BasicLatentMAC:
         if self.args.obs_agent_id:
             vec_inputs.append(th.eye(self.n_agents, device=batch.device).unsqueeze(0).expand(bs, -1, -1))
         vec_inputs.append(self.sample_batch_latent_var(batch, t).unsqueeze(1).expand(-1, self.n_agents, -1))
+
+        # process observation
         obs = batch["obs"][:, t]
         if self.args.is_obs_image:
             obs = obs.reshape(bs*self.n_agents, obs.shape[-3], obs.shape[-2], obs.shape[-1])  # flatten the first two dims
@@ -138,13 +140,16 @@ class BasicLatentMAC:
         latent_hidden_sizes = self.args.latent_encoder_hidden_sizes
         return latent_input_shape, latent_output_shape, latent_hidden_sizes
 
-    def _build_latent_encoder_input(self, batch, t):
+    def _build_latent_encoder_input(self, batch, t=None):
         # z_q, z_p: [n_agents][latent_relation_space_dim]
         bs = batch.batch_size
-        if len(batch["z_q"][:, t].shape) == 1:  # FIXME: probably unnecessary
+        if t is None:
+            inputs = [batch["z_q"], batch["z_p"]]
+        elif len(batch["z_q"][:, t].shape) == 1:  # FIXME: probably unnecessary
             inputs = [batch["z_q"][:, t].unsqueeze(0), batch["z_p"][:, t].unsqueeze(0)]
         else:
             inputs = [batch["z_q"][:, t], batch["z_p"][:, t]]
+
         return th.cat([x.reshape(bs, -1) for x in inputs], dim=1)
 
 

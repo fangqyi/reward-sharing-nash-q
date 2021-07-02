@@ -38,9 +38,9 @@ kernel_size: 3
 stride: 1
 conv_out_dim: 8
 rnn_hidden_dim: 128
-name: "dist_meta_learning_cleanup_centralized"
+name: "dist_meta_learning_cleanup_decentralized"
 
 agent: "rnn_agent_image_vec"
 
 #
-centralized_social_welfare: True
+centralized_social_welfare: False

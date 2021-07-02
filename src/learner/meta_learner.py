@@ -6,9 +6,10 @@ from components.episode_buffer import EpisodeBatch
 import torch as th
 from torch.optim import Adam
 
-from module.critics.dist_critic import DistCritic
+from module.critics.dist_critic import CentralizedDistCritic, DecentralizedDistCritic
 
 
+# centralized social welfare critic: all the agents optimize the estimated social utility
 class MetaQLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = args
@@ -19,31 +20,46 @@ class MetaQLearner:
 
         self.last_target_update_episode = 0
 
-        self.z_critic = DistCritic(scheme, args)
+        if args.centralized_social_welfare:
+            self.z_critic = CentralizedDistCritic(scheme, args)
+            self.z_critic_optimiser = Adam(params=list(self.z_critic.parameters()), lr=args.z_critic_lr,
+                                           eps=args.optim_eps)
+        else:
+            # fully decentralized critic on reward-sharing structure
+            self.z_critics = [DecentralizedDistCritic(scheme, args) for _ in range(self.args.n_agents)]
+            critic_params = sum([list(critic.parameters()) for critic in self.z_critics], [])
+            self.z_critic_optimiser = Adam(params=critic_params, lr=args.z_critic_lr, eps=args.optim_eps)
 
         self.optimiser = Adam(params=self.params, lr=args.lr, eps=args.optim_eps)
-        self.z_learning_optimiser = Adam(params=list(self.z_critic.parameters()), lr=args.z_critic_lr, eps=args.optim_eps)
 
         # a little wasteful to deepcopy (e.g. duplicates action selector), but should work for any MAC
         self.target_mac = copy.deepcopy(mac)
 
         self.log_stats_t = -self.args.learner_log_interval - 1
 
-    def get_social_welfare_z(self, batch, device):
-        z_vals = self.z_critic(batch, device)
+    def get_social_welfare_z(self, entry, device):
+        # returns the estimated social utility
+        if self.args.centralized_social_welfare:
+            z_vals = self.z_critic(entry, device)
+        else:
+            latent_vars = self.mac.sample_batch_latent_var(entry["z_q"], entry["z_p"])
+            z_vals = sum([self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)])
         return z_vals
 
-    def z_train(self, batch, device, t_env):  # FIXME: consider value decomposition?
-        # welp, it isn't batched
-        z_vals = self.z_critic(batch, device)
-        z_targets = torch.sum(batch["evals"], dim=-1)  # from all agents'
-        z_critic_loss = z_vals - z_targets
-        z_critic_loss = (z_critic_loss ** 2).sum()
-        self.logger.log_stat("z_critic_loss", z_critic_loss.item(), t_env)
+    def z_train(self, entry, t_env):
+        # train centralized critic
+        if self.args.centralized_social_welfare:
+            z_vals = self.z_critic(entry)
+            z_critic_loss = ((z_vals - entry["evals"]) ** 2).sum()
+        else:
+            latent_vars = self.mac.sample_batch_latent_var(entry["z_q"], entry["z_p"])
+            z_vals = [self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)]
+            z_critic_loss = sum([(z_vals[i] - entry["evals"][i])**2 for i in range(self.args.n_agents)])
 
-        self.z_learning_optimiser.zero_grad()
+        self.logger.log_stat("z_critic_loss", z_critic_loss.item(), t_env)
+        self.z_critic_optimiser.zero_grad()
         z_critic_loss.backward()
-        self.z_learning_optimiser.step()
+        self.z_critic_optimiser.step()
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
@@ -97,14 +113,9 @@ class MetaQLearner:
         td_error = (chosen_action_qvals - targets.detach())  # no gradient through target net
         # (bs,t,1)
 
-        #print("in learner:")
-        #print(kl_divs)
         kl_mask = copy.deepcopy(mask).expand_as(kl_divs)
-        #print(kl_mask)
         masked_kl_div = kl_divs * kl_mask
-        #print(masked_kl_div)
         kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
-        #print(kl_div_loss)
 
         mask = mask.expand_as(td_error)
 

@@ -64,6 +64,10 @@ class DistEpisodeRunner:
             z_q = z_q.detach().cpu().numpy()
             z_p = z_p.detach().cpu().numpy()
 
+        if len(z_q.shape) == 3:
+            z_q = z_q[0]
+            z_p = z_p[0]
+
         terminated = False
         episode_return = [0] * self.n_agents
         distributed_return = [0] * self.n_agents
@@ -83,7 +87,7 @@ class DistEpisodeRunner:
                     # "state": [self.env.get_state()],
                     "avail_actions": [self.env.get_avail_actions()],
                     "obs": [self.env.get_obs()],
-                    "adjacent_agents": [[[1]*self.n_agents]*self.n_agents],
+                    "adjacent_agents": [[[1] * self.n_agents] * self.n_agents],
                     "z_p": z_p,
                     "z_q": z_q,
                 }
@@ -96,15 +100,11 @@ class DistEpisodeRunner:
 
             rewards, terminated, env_info = self.env.step(actions[0])
             distributed_rewards = [0] * self.n_agents
+
             # calculate distance
             dist = []
-            for giver in range(self.n_agents):  # FIXME: seriously, refactor this
-                if len(z_q.shape) == 3:  # [bs, n_agents, space_dim]
-                    z_q_giver = z_q[0][giver]
-                else:
-                    z_q_giver = z_q[giver]
-                dist.append(softmax([0.0-distance(z_q_giver, z_p[receiver] if len(z_p.shape) == 2 else z_p[0][receiver])
-                                     for receiver in range(self.n_agents)]))
+            for giver in range(self.n_agents):
+                dist.append(softmax([0.0 - distance(z_q[giver], z_p[receiver]) for receiver in range(self.n_agents)]))
 
             for receiver in range(self.n_agents):
                 for giver in range(self.n_agents):
@@ -112,6 +112,7 @@ class DistEpisodeRunner:
 
             episode_return = [episode_return[idx] + rewards[idx] for idx in range(self.n_agents)]
             distributed_return = [distributed_return[idx] + distributed_rewards[idx] for idx in range(self.n_agents)]
+
             post_transition_data = {
                 "actions": actions,
                 "rewards": rewards,
@@ -144,16 +145,13 @@ class DistEpisodeRunner:
 
         # Select actions in the last stored state
         actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
-        self.batch.update({"actions": actions,}, ts=self.t)
+        self.batch.update({"actions": actions, }, ts=self.t)
 
         cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
         cur_dis_returns = self.test_dis_returns if test_mode else self.train_dis_returns
         log_prefix = "test_" if test_mode else ""
-        # print("cur_stats")
-        # print(cur_stats)
-        # print("env_info")
-        # print(env_info)
+
         for k in set(cur_stats) | set(env_info):
             if isinstance(env_info.get(k), list):
                 cur_stats.update({k: cur_stats.get(k, []) + env_info.get(k, 0)})
@@ -180,18 +178,19 @@ class DistEpisodeRunner:
         else:
             return self.batch
 
-
     def _log(self, returns, dis_returns, stats, prefix):
         # self.logger.console_logger.info("Agent rewards:")
         for agent_idx in range(self.n_agents):
             agent_returns = [dis_returns[t][agent_idx] for t in range(len(dis_returns))]
-            self.logger.log_stat(prefix + "agent {} post-sharing return_mean".format(agent_idx), np.mean(agent_returns), self.t_env)
-            self.logger.log_stat(prefix + "agent {} post-sharing return_std".format(agent_idx), np.std(agent_returns), self.t_env)
-
-        for agent_idx in range(self.n_agents):
+            self.logger.log_stat(prefix + "agent {} post-sharing return_mean".format(agent_idx), np.mean(agent_returns),
+                                 self.t_env)
+            self.logger.log_stat(prefix + "agent {} post-sharing return_std".format(agent_idx), np.std(agent_returns),
+                                 self.t_env)
             agent_returns = [returns[t][agent_idx] for t in range(len(returns))]
-            self.logger.log_stat(prefix + "agent {} original return_mean".format(agent_idx), np.mean(agent_returns), self.t_env)
-            self.logger.log_stat(prefix + "agent {} original return_std".format(agent_idx), np.std(agent_returns), self.t_env)
+            self.logger.log_stat(prefix + "agent {} original return_mean".format(agent_idx), np.mean(agent_returns),
+                                 self.t_env)
+            self.logger.log_stat(prefix + "agent {} original return_std".format(agent_idx), np.std(agent_returns),
+                                 self.t_env)
 
         returns.clear()
         dis_returns.clear()
@@ -206,6 +205,7 @@ def softmax(vector):
     e = [math.exp(x) for x in vector]
     return [x / sum(e) for x in e]
 
+
 def distance(a, b):
-    ret = numpy.linalg.norm(a-b, ord=2)
+    ret = numpy.linalg.norm(a - b, ord=2)
     return ret

@@ -80,14 +80,8 @@ def evaluate_sequential(args, runner):
 
     runner.close_env()
 
+# meta-training runner
 def run_distance_sequential(args, logger):
-    # meta-train the actor agents
-    #   - generate task distributions ()
-    #   - train actor agents + sampler
-    #       - for i
-    #   - save the trained model
-    # train distance z, z' [-1, 1]
-    #   -
     # Init runner so we can get env info
     runner = r_REGISTRY[args.runner](args=args, logger=logger)
 
@@ -95,13 +89,6 @@ def run_distance_sequential(args, logger):
     env_info = runner.get_env_info()
     args.n_agents = env_info["n_agents"]
     args.n_actions = env_info["n_actions"]
-    # args.state_shape = env_info["state_shape"]
-
-    #    args.own_feature_size = env_info["own_feature_size"] #unit_type_bits+shield_bits_ally
-    # if args.obs_last_action:
-    #    args.own_feature_size+=args.n_actions
-    # if args.obs_agent_id:
-    #    args.own_feature_size+=args.n_agents
 
     # Default/Base scheme
     scheme = {
@@ -142,7 +129,6 @@ def run_distance_sequential(args, logger):
     if args.checkpoint_path != "":
 
         timesteps = []
-        timestep_to_load = 0
 
         if not os.path.isdir(args.checkpoint_path):
             logger.console_logger.info("Checkpoint directiory {} doesn't exist".format(args.checkpoint_path))
@@ -208,20 +194,27 @@ def run_distance_sequential(args, logger):
                 last_log_T = runner.t_env
 
     logger.console_logger.info("Beginning training for {} timesteps".format(args.total_z_training_steps*args.env_steps_every_z))
+
     runner.t_env = 0
     last_log_T = 0
-    z_train_cnt = 0
-    env_steps_per_z = 0
+    z_train_steps = 0
+    env_steps_threshold = 0
     z_p, z_q = generate_dist_distributions(args, num=1)
-    z_optimiser = torch.optim.Adam(params=[z_p, z_q], lr=args.z_update_lr, eps=args.optim_eps)
-    while z_train_cnt <= args.total_z_training_steps:
+
+    if args.centralized_social_welfare:
+        params = [z_p, z_q]
+    else:
+        params = sum([[z_p[i], z_q[i]] for i in range(args.n_agents)], [])
+    z_optimiser = torch.optim.Adam(params=params, lr=args.z_update_lr, eps=args.optim_eps)
+
+    while z_train_steps <= args.total_z_training_steps:
         device = "cpu" if args.buffer_cpu_only else args.device
         buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
                               preprocess=preprocess,
                               device=device)
 
-        env_steps_per_z += args.env_steps_every_z
-        while runner.t_env <= env_steps_per_z:
+        env_steps_threshold += args.env_steps_every_z
+        while runner.t_env <= env_steps_threshold:
             # Run for a whole episode at a time
             episode_batch = runner.run(z_q, z_p, test_mode=False)
             buffer.insert_episode_batch(episode_batch)
@@ -246,25 +239,31 @@ def run_distance_sequential(args, logger):
         episode_returns = []
         for _ in range(args.z_sample_runs):
             episode_returns.append(runner.run(z_q, z_p, test_mode=True, sample_mode=True))
+
         data = {"z_p": z_p, "z_q": z_q, "evals": episode_returns}
-        train_batch = {}
+        critic_train_batch = {}
         for k, v in data.items():
             if not isinstance(v, th.Tensor):
                 v = th.tensor(v, dtype=th.long, device=device)
             else:
                 v.to(device)
-            train_batch.update({k: v})
+            critic_train_batch.update({k: v})
+
         # train z critic
-        train_batch["evals"] = torch.sum(train_batch["evals"], dim=0) / args.z_sample_runs
-        learner.z_train(train_batch, device, z_train_cnt)
+        if args.centralized_social_welfare:
+            # calculate the average performance
+            critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"]) / args.z_sample_runs
+        else:
+            critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"], dim=0) / args.z_sample_runs
+        learner.z_train(critic_train_batch, z_train_steps)
 
         # update z_q, z_p
-        total_val = learner.get_social_welfare_z(train_batch, device)
+        total_val = - learner.get_social_welfare_z(critic_train_batch, device)
         z_optimiser.zero_grad()
         total_val.backward()
         z_optimiser.step()
 
-        z_train_cnt += 1
+        z_train_steps += 1
 
         t_max = args.env_steps_every_z * args.total_z_training_steps
         logger.log_stat("Estimated social welfare", total_val.item(), runner.t_env)
@@ -302,23 +301,24 @@ def run_distance_sequential(args, logger):
     logger.console_logger.info("Finished Training")
 
 
-
 def generate_dist_distributions(args, num=None):
     # [(z_q, z_p)]: z_q: [n_agents][space_dim]
     # FIXME: any better (more spreading) way than uniform?
-    distribution = torch.distributions.uniform.Uniform(torch.tensor([args.latent_relation_space_lower_bound], dtype=torch.float),
-                                                       torch.tensor([args.latent_relation_space_upper_bound], dtype=torch.float))
+    lower = args.latent_relation_space_lower_bound
+    upper = args.latent_relation_space_upper_bound
+    distribution = torch.distributions.uniform.Uniform(torch.tensor([lower], dtype=torch.float), torch.tensor([upper], dtype=torch.float))
 
+    size = torch.Size([args.n_agents, args.latent_relation_space_dim])
+    dim = args.latent_relation_space_dim
     if num is None:
-        tasks = [(distribution.sample(torch.Size([args.n_agents, args.latent_relation_space_dim])).view(1, args.n_agents, args.latent_relation_space_dim),
-                  distribution.sample(torch.Size([args.n_agents, args.latent_relation_space_dim])).view(1, args.n_agents, args.latent_relation_space_dim))
+        return [(distribution.sample(size).view(1, args.n_agents, dim),
+                  distribution.sample(size).view(1, args.n_agents, dim))
                  for _ in range(args.pretrained_task_num)]
     else:
-        tasks = (distribution.sample(torch.Size([args.n_agents, args.latent_relation_space_dim])).view(args.n_agents, args.latent_relation_space_dim),
-                 distribution.sample(torch.Size([args.n_agents, args.latent_relation_space_dim])).view(args.n_agents, args.latent_relation_space_dim))
-        tasks[0].requires_grad = True
-        tasks[1].requires_grad = True
-    return tasks
+        z = (distribution.sample(size), distribution.sample(size))
+        z[0].requires_grad = True
+        z[1].requires_grad = True
+        return z
 
 def args_sanity_check(config, _log):
     # set CUDA flags

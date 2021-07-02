@@ -64,21 +64,13 @@ class MLPMultiGaussianEncoder(nn.Module):
 
     def compute_kl_div(self):
         device = self.z_means[0].device
-        prior = torch.distributions.Normal(torch.zeros(self.output_size).to(device), torch.ones(self.output_size).to(device))
+        prior = torch.distributions.Normal(torch.zeros(self.output_size).to(device),
+                                           torch.ones(self.output_size).to(device))
         posteriors = [torch.distributions.Normal(mu, torch.sqrt(var)) for mu, var in
                       zip(torch.unbind(self.z_means), torch.unbind(self.z_vars))]
-        # print(prior.device)
-        # if prior.device != posteriors[0].device:  # horrible shotgun fix
-        #     if prior.device == 'cpu':
-        #         prior.to(posteriors[0].device)
-        #     else:
-        #         posteriors = [post.to(posteriors[0].device) for post in posteriors]
         kl_divs = [torch.distributions.kl.kl_divergence(post, prior) for post in posteriors]
-        #print(kl_divs)
         kl_divs = torch.stack(kl_divs)
         return kl_divs
-        #kl_div_sum = torch.sum(torch.stack(kl_divs))
-        #return kl_div_sum
 
     def reset(self):
         self.z_means = None
