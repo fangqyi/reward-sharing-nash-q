@@ -200,11 +200,7 @@ def run_distance_sequential(args, logger):
     z_train_steps = 0
     env_steps_threshold = 0
     z_p, z_q = generate_dist_distributions(args, num=1)
-
-    if args.centralized_social_welfare:
-        params = [z_p, z_q]
-    else:
-        params = sum([[z_p[i], z_q[i]] for i in range(args.n_agents)], [])
+    params = [z_p, z_q]
     z_optimiser = torch.optim.Adam(params=params, lr=args.z_update_lr, eps=args.optim_eps)
 
     while z_train_steps <= args.total_z_training_steps:
