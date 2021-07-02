@@ -64,6 +64,7 @@ class DistEpisodeRunner:
             z_q = z_q.detach().cpu().numpy()
             z_p = z_p.detach().cpu().numpy()
 
+
         if len(z_q.shape) == 3:
             z_q_cp = z_q[0]
             z_p_cp = z_p[0]
