@@ -212,6 +212,14 @@ def run_distance_sequential(args, logger):
         env_steps_threshold += args.env_steps_every_z
         while runner.t_env <= env_steps_threshold:
             # Run for a whole episode at a time
+            print("z_q")
+            print(z_q)
+            print(z_q.shape)
+            print()
+            print("z_p")
+            print(z_p)
+            print(z_p.shape)
+
             episode_batch = runner.run(z_q, z_p, test_mode=False)
             buffer.insert_episode_batch(episode_batch)
 
