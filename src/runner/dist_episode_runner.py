@@ -65,8 +65,11 @@ class DistEpisodeRunner:
             z_p = z_p.detach().cpu().numpy()
 
         if len(z_q.shape) == 3:
-            z_q = z_q[0]
-            z_p = z_p[0]
+            z_q_cp = z_q[0]
+            z_p_cp = z_p[0]
+        else:
+            z_q_cp = z_q
+            z_p_cp = z_p
 
         terminated = False
         episode_return = [0] * self.n_agents
@@ -104,7 +107,7 @@ class DistEpisodeRunner:
             # calculate distance
             dist = []
             for giver in range(self.n_agents):
-                dist.append(softmax([0.0 - distance(z_q[giver], z_p[receiver]) for receiver in range(self.n_agents)]))
+                dist.append(softmax([0.0 - distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(self.n_agents)]))
 
             for receiver in range(self.n_agents):
                 for giver in range(self.n_agents):
