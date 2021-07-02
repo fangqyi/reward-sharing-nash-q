@@ -319,7 +319,7 @@ def generate_dist_distributions(args, num=None):
                   distribution.sample(size).view(1, args.n_agents, dim))
                  for _ in range(args.pretrained_task_num)]
     else:
-        z = (distribution.sample(size), distribution.sample(size))
+        z = (distribution.sample(size).view(args.n_agents, dim), distribution.sample(size).view(args.n_agents, dim))
         z[0].requires_grad = True
         z[1].requires_grad = True
         return z
