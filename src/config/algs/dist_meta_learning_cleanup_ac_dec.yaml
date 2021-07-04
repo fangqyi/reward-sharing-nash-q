@@ -21,7 +21,7 @@ latent_relation_space_lower_bound: 0.0
 latent_var_dim: 8
 latent_encoder_hidden_sizes: [32, 32]
 pretrained_task_num: 64
-total_pretrain_steps: 1 # 500000
+total_pretrain_steps: 500000
 z_critic_lr: 0.0005
 z_update_lr: 0.0005
 
