@@ -82,9 +82,8 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
         )
 
     def forward(self, batch, agent_id, latent_var, *args):
-        bs = batch["z_p"].shape[0]
         inputs = self._build_inputs(batch, agent_id, latent_var)
-        return self.critic(inputs).reshape(bs, self.n_agents, -1)
+        return self.critic(inputs)
 
     def _build_inputs(self, batch, agent_id, latent_var):
         # assume latent_state: [bs, latent_state_size]
