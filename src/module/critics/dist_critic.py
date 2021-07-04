@@ -81,7 +81,10 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
             layer_norm_params=None,
         )
 
-    def forward(self, batch, agent_id, latent_var):
+    def forward(self, batch, agent_id, latent_var, *args):
+        print("the bad args", args)
+        print(len(args))
+        print(batch, agent_id, latent_var)
         bs = batch["z_p"].shape[0]
         inputs = self._build_inputs(batch, agent_id, latent_var)
         return self.critic(inputs).reshape(bs, self.n_agents, -1)
