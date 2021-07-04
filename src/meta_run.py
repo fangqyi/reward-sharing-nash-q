@@ -239,28 +239,22 @@ def run_distance_sequential(args, logger):
             episode_returns.append(runner.run(z_q, z_p, test_mode=True, sample_mode=True))
 
         data = {"z_p": z_p, "z_q": z_q, "evals": episode_returns}
-        print(args.device)
+
         critic_train_batch = {}
         for k, v in data.items():
             if not isinstance(v, th.Tensor):
                 v = th.tensor(v, dtype=th.long, device=args.device)
             else:
                v.to(args.device)
-            if args.use_cuda:
-                v.cuda()
-            print(k)
-            print(v.device)
             critic_train_batch.update({k: v})
-        print("z_p device at metarun 1")
-        print(critic_train_batch["z_p"].device)
+
         # train z critic
         if args.centralized_social_welfare:
             # calculate the average performance
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"]) / args.z_sample_runs
         else:
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"], dim=0) / args.z_sample_runs
-        print("z_p device at metarun")
-        print(critic_train_batch["z_p"].device)
+
         learner.z_train(critic_train_batch, z_train_steps)
 
         # update z_q, z_p
