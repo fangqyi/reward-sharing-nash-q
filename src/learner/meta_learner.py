@@ -42,7 +42,7 @@ class MetaQLearner:
         if self.args.centralized_social_welfare:
             z_vals = self.z_critic(entry, device)
         else:
-            latent_vars = self.mac.sample_batch_latent_var(entry["z_q"], entry["z_p"])
+            latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
             z_vals = sum([self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)])
         return z_vals
 
