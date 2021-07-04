@@ -244,8 +244,10 @@ def run_distance_sequential(args, logger):
             if not isinstance(v, th.Tensor):
                 v = th.tensor(v, dtype=th.long, device=args.device)
             else:
-                v.to(args.device)
-            print("k")
+               v.to(args.device)
+            if args.use_cuda:
+                v.cuda()
+            print(k)
             print(v.device)
             critic_train_batch.update({k: v})
         print("z_p device at metarun 1")
