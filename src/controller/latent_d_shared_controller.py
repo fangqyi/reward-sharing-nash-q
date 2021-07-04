@@ -39,6 +39,8 @@ class BasicLatentMAC:
 
     def sample_latent_var(self, z_q, z_p):
         inputs = th.cat([x.reshape(-1) for x in [z_q, z_p]], dim=-1).unsqueeze(0)
+        print("inputs device at sample_latent_var")
+        print(inputs.device)
         return self.latent_encoder.infer_posterior(inputs)
 
     def compute_kl_div(self):
