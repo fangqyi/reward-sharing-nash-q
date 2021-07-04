@@ -154,6 +154,11 @@ class MetaQLearner:
     def cuda(self):
         self.mac.cuda()
         self.target_mac.cuda()
+        if self.args.centralized_social_welfare:
+            self.z_critic.cuda()
+        else:
+            for z_critic in self.z_critics:
+                z_critic.cuda()
 
     def save_models(self, path):
         self.mac.save_models(path)
