@@ -14,6 +14,7 @@ from types import SimpleNamespace as SN
 from utils.logging import Logger
 from utils.timehelper import time_left, time_str
 from os.path import dirname, abspath
+from torch.distributions.uniform import Uniform
 
 from learner import REGISTRY as le_REGISTRY
 from runner import REGISTRY as r_REGISTRY
@@ -311,15 +312,17 @@ def generate_dist_distributions(args, num=None):
     # FIXME: any better (more spreading) way than uniform?
     lower = args.latent_relation_space_lower_bound
     upper = args.latent_relation_space_upper_bound
-    distribution = torch.distributions.uniform.Uniform(torch.tensor([lower], dtype=torch.float), torch.tensor([upper], dtype=torch.float))
 
     size = torch.Size([args.n_agents, args.latent_relation_space_dim])
     dim = args.latent_relation_space_dim
     if num is None:
+        distribution = Uniform(torch.tensor([lower], dtype=torch.float), torch.tensor([upper], dtype=torch.float))
         return [(distribution.sample(size).view(1, args.n_agents, dim),
                   distribution.sample(size).view(1, args.n_agents, dim))
                  for _ in range(args.pretrained_task_num)]
     else:
+        distribution = Uniform(torch.tensor([lower], dtype=torch.float).to(args.device),
+                               torch.tensor([upper], dtype=torch.float).to(args.device))
         z = (distribution.sample(size).view(args.n_agents, dim), distribution.sample(size).view(args.n_agents, dim))
         z[0].requires_grad = True
         z[1].requires_grad = True
