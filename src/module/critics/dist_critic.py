@@ -31,7 +31,7 @@ class CentralizedDistCritic(nn.Module):  # Centralized critic that predicts the 
             layer_norm_params=None,
         )
 
-    def forward(self, batch, device):
+    def forward(self, batch):
         inputs = self._build_inputs(batch)
         return self.critic(inputs)
 
@@ -81,9 +81,9 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
             layer_norm_params=None,
         )
 
-    def forward(self, batch, device):
+    def forward(self, batch, agent_id, latent_var):
         bs = batch["z_p"].shape[0]
-        inputs = self._build_inputs(batch)
+        inputs = self._build_inputs(batch, agent_id, latent_var)
         return self.critic(inputs).reshape(bs, self.n_agents, -1)
 
     def _build_inputs(self, batch, agent_id, latent_var):

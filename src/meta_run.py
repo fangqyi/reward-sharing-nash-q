@@ -245,7 +245,7 @@ def run_distance_sequential(args, logger):
             if not isinstance(v, th.Tensor):
                 v = th.tensor(v, dtype=th.long, device=args.device)
             else:
-               v.to(args.device)
+                v.to(args.device)
             critic_train_batch.update({k: v})
 
         # train z critic
@@ -258,7 +258,7 @@ def run_distance_sequential(args, logger):
         learner.z_train(critic_train_batch, z_train_steps)
 
         # update z_q, z_p
-        total_val = - learner.get_social_welfare_z(critic_train_batch, device)
+        total_val = - learner.get_social_welfare_z(critic_train_batch)
         z_optimiser.zero_grad()
         total_val.backward()
         z_optimiser.step()
