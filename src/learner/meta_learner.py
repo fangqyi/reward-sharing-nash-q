@@ -52,7 +52,7 @@ class MetaQLearner:
             z_vals = self.z_critic(entry)
             z_critic_loss = ((z_vals - entry["evals"]) ** 2).sum()
         else:
-            latent_vars = self.mac.sample_batch_latent_var(entry["z_q"], entry["z_p"])
+            latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
             z_vals = [self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)]
             z_critic_loss = sum([(z_vals[i] - entry["evals"][i])**2 for i in range(self.args.n_agents)])
 
