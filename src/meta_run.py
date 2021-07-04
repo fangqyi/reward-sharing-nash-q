@@ -245,6 +245,8 @@ def run_distance_sequential(args, logger):
                 v = th.tensor(v, dtype=th.long, device=args.device)
             else:
                 v.to(args.device)
+            print("k")
+            print(v.device)
             critic_train_batch.update({k: v})
         print("z_p device at metarun 1")
         print(critic_train_batch["z_p"].device)
