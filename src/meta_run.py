@@ -261,12 +261,18 @@ def run_distance_sequential(args, logger):
         total_val = - learner.get_social_welfare_z(critic_train_batch)
         z_optimiser.zero_grad()
         total_val.backward()
+        grad_norm = th.nn.utils.clip_grad_norm_(params, args.grad_norm_clip)
         z_optimiser.step()
 
         z_train_steps += 1
 
         t_max = args.env_steps_every_z * args.total_z_training_steps
         logger.log_stat("Estimated social welfare", total_val.item(), runner.t_env)
+        logger.log_stat("z_grad_norm", grad_norm, runner.t_env)
+        logger.log_stat("agent 0 z_p", z_p[0], runner.t_env)
+        logger.log_stat("agent 0 z_q", z_q[0], runner.t_env)
+        logger.log_stat("agent 1 z_p", z_p[1], runner.t_env)
+        logger.log_stat("agent 1 z_q", z_q[1], runner.t_env)
         logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
         logger.console_logger.info("Estimated time left: {}. Time passed: {}".format(
             time_left(last_time, last_test_T, runner.t_env, t_max), time_str(time.time() - start_time)))

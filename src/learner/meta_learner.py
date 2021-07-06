@@ -65,7 +65,7 @@ class MetaQLearner:
 
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
             self.logger.log_stat("z_critic_loss", z_critic_loss.item(), t_env)
-            self.logger.log_stat("grad_norm", grad_norm, t_env)
+            self.logger.log_stat("z_critic_grad_norm", grad_norm, t_env)
             self.log_stats_t = t_env
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
@@ -146,7 +146,7 @@ class MetaQLearner:
 
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
             self.logger.log_stat("loss", loss.item(), t_env)
-            self.logger.log_stat("grad_norm", grad_norm, t_env)
+            self.logger.log_stat("policy_grad_norm", grad_norm, t_env)
             mask_elems = mask.sum().item()
             self.logger.log_stat("kl_div_abs", kl_div_loss.abs().item(), t_env)
             self.logger.log_stat("td_error_abs", (masked_td_error.abs().sum().item()/mask_elems), t_env)
