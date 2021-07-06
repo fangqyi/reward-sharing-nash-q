@@ -174,7 +174,9 @@ def run_distance_sequential(args, logger):
     while runner.t_env <= args.total_pretrain_steps:
         for z_q, z_p in tasks:
             # Run for a whole episode at a time
-            episode_batch = runner.run(z_q, z_p, test_mode=False)
+            z_q_cp = z_q.clone()
+            z_p_cp = z_p.clone()
+            episode_batch = runner.run(z_q_cp, z_p_cp, test_mode=False)
             buffer.insert_episode_batch(episode_batch)
 
             if buffer.can_sample(args.batch_size):
@@ -270,7 +272,7 @@ def run_distance_sequential(args, logger):
         z_train_steps += 1
 
         t_max = args.env_steps_every_z * args.total_z_training_steps
-        logger.log_stat("Estimated social welfare", total_val.item(), runner.t_env)
+        logger.log_stat("Estimated social welfare", - total_val.item(), runner.t_env)
         logger.log_stat("z_grad_norm", grad_norm, runner.t_env)
         logger.log_vec("agent 0 z_p", z_p[0], runner.t_env)
         logger.log_vec("agent 0 z_q", z_q[0], runner.t_env)
