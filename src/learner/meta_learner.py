@@ -22,13 +22,14 @@ class MetaQLearner:
 
         if args.centralized_social_welfare:
             self.z_critic = CentralizedDistCritic(scheme, args)
-            self.z_critic_optimiser = Adam(params=list(self.z_critic.parameters()), lr=args.z_critic_lr,
+            self.z_critic_params = list(self.z_critic.parameters())
+            self.z_critic_optimiser = Adam(params=self.z_critic_params, lr=args.z_critic_lr,
                                            eps=args.optim_eps)
         else:
             # fully decentralized critic on reward-sharing structure
             self.z_critics = [DecentralizedDistCritic(scheme, args) for _ in range(self.args.n_agents)]
-            critic_params = sum([list(critic.parameters()) for critic in self.z_critics], [])
-            self.z_critic_optimiser = Adam(params=critic_params, lr=args.z_critic_lr, eps=args.optim_eps)
+            self.z_critic_params = sum([list(critic.parameters()) for critic in self.z_critics], [])
+            self.z_critic_optimiser = Adam(params=self.z_critic_params, lr=args.z_critic_lr, eps=args.optim_eps)
 
         self.optimiser = Adam(params=self.params, lr=args.lr, eps=args.optim_eps)
 
@@ -59,7 +60,13 @@ class MetaQLearner:
         self.logger.log_stat("z_critic_loss", z_critic_loss.item(), t_env)
         self.z_critic_optimiser.zero_grad()
         z_critic_loss.backward()
+        grad_norm = th.nn.utils.clip_grad_norm_(self.z_critic_params, self.args.grad_norm_clip)  # max_norm
         self.z_critic_optimiser.step()
+
+        if t_env - self.log_stats_t >= self.args.learner_log_interval:
+            self.logger.log_stat("z_critic_loss", z_critic_loss.item(), t_env)
+            self.logger.log_stat("grad_norm", grad_norm, t_env)
+            self.log_stats_t = t_env
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
