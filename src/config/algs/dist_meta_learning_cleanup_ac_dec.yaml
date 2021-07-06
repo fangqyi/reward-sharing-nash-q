@@ -8,7 +8,7 @@ z_sample_runs: 10
 
 epsilon_start: 1.0
 epsilon_finish: 0.05
-epsilon_anneal_time: 2500000
+epsilon_anneal_time: 250000
 
 buffer_size: 5000
 
