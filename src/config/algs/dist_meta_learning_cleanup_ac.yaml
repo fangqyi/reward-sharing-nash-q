@@ -15,12 +15,12 @@ buffer_size: 5000
 #
 meta_t_max:
 meta_type: "distance_latent"
-latent_relation_space_dim: 2
+latent_relation_space_dim: 4
 latent_relation_space_upper_bound: 10.0
 latent_relation_space_lower_bound: 0.0
-latent_var_dim: 2
+latent_var_dim: 8
 latent_encoder_hidden_sizes: [32, 32]
-pretrained_task_num: 64
+pretrained_task_num: 32
 total_pretrain_steps: 500000
 z_critic_lr: 0.0001
 z_update_lr: 0.0001
