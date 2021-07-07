@@ -7,6 +7,7 @@ import logging
 import numpy as np
 import torch
 
+
 class Logger:
     def __init__(self, console_logger):
         self.console_logger = console_logger
@@ -25,7 +26,7 @@ class Logger:
         self.use_tb = True
 
         from tensorboardX import SummaryWriter
-        self.writer=SummaryWriter(directory_name)
+        self.writer = SummaryWriter(directory_name)
 
     def setup_sacred(self, sacred_run_dict):
         self.sacred_info = sacred_run_dict.info
@@ -45,9 +46,9 @@ class Logger:
                 self.sacred_info["{}_T".format(key)] = [t]
                 self.sacred_info[key] = [value]
 
-    def log_vec(self,mat,metadata,global_step,tag):
+    def log_vec(self, mat, global_step, tag, metadata=None):
         if self.use_tb:
-            self.writer.add_embedding(mat,metadata,global_step=global_step,tag=tag)
+            self.writer.add_embedding(mat, metadata, global_step=global_step, tag=tag)
 
     def print_recent_stats(self):
         log_str = "Recent Stats | t_env: {:>10} | Episode: {:>8}\n".format(*self.stats["episode"][-1])
@@ -79,4 +80,3 @@ def get_logger():
     logger.setLevel('DEBUG')
 
     return logger
-
