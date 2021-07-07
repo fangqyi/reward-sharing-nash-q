@@ -8,7 +8,7 @@ z_sample_runs: 10
 
 epsilon_start: 1.0
 epsilon_finish: 0.05
-epsilon_anneal_time: 250000
+epsilon_anneal_time: 750000
 
 buffer_size: 5000
 
@@ -21,12 +21,12 @@ latent_relation_space_lower_bound: 0.0
 latent_var_dim: 8
 latent_encoder_hidden_sizes: [32, 32]
 pretrained_task_num: 32
-total_pretrain_steps: 500000
+total_pretrain_steps: 1500000
 z_critic_lr: 0.0001
 z_update_lr: 0.0001
 
 # update the target network every {} episodes
-target_update_interval: 50
+target_update_interval: 200
 
 # use the Q_Learner to train
 agent_output_type: "q"
