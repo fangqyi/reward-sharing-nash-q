@@ -23,16 +23,16 @@ class MetaQLearner:
         if args.centralized_social_welfare:
             self.z_critic = CentralizedDistCritic(scheme, args)
             self.z_critic_params = list(self.z_critic.parameters())
-            self.z_critic_optimiser = Adam(params=self.z_critic_params, betas=(args.optim_beta1, args.optim_beta2), lr=args.z_critic_lr,
+            self.z_critic_optimiser = Adam(params=self.z_critic_params, lr=args.z_critic_lr,
                                            eps=args.optim_eps)
         else:
             # fully decentralized critic on reward-sharing structure
             self.z_critics = [DecentralizedDistCritic(scheme, args) for _ in range(self.args.n_agents)]
             self.z_critic_params = sum([list(critic.parameters()) for critic in self.z_critics], [])
-            self.z_critic_optimiser = Adam(params=self.z_critic_params, betas=(args.optim_beta1, args.optim_beta2), lr=args.z_critic_lr, eps=args.optim_eps)
+            self.z_critic_optimiser = Adam(params=self.z_critic_params, lr=args.z_critic_lr, eps=args.optim_eps)
 
-        self.optimiser = Adam(params=self.params, betas=(args.optim_beta1, args.optim_beta2), lr=args.lr, eps=args.optim_eps)
-
+        self.optimiser = Adam(params=self.params, lr=args.lr, eps=args.optim_eps)
+        # betas=(args.optim_beta1, args.optim_beta2)
         # a little wasteful to deepcopy (e.g. duplicates action selector), but should work for any MAC
         self.target_mac = copy.deepcopy(mac)
 
