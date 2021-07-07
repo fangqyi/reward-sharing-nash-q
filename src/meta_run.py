@@ -206,7 +206,7 @@ def run_distance_sequential(args, logger):
     env_steps_threshold = 0
     z_p, z_q = generate_dist_distributions(args, num=1)
     params = [z_p, z_q]
-    z_optimiser = torch.optim.Adam(params=params, lr=args.z_update_lr, eps=args.optim_eps)
+    z_optimiser = torch.optim.Adam(params=params, betas=(args.optim_beta1, args.optim_beta2), lr=args.z_update_lr, eps=args.optim_eps)
 
     device = "cpu" if args.buffer_cpu_only else args.device
     buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
