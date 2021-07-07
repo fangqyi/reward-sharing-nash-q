@@ -177,7 +177,7 @@ class DistEpisodeRunner:
             self.log_train_stats_t = self.t_env
 
         if sample_mode:
-            return episode_return
+            return distributed_return
         else:
             return self.batch
 
