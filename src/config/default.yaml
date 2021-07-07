@@ -31,12 +31,12 @@ local_results_path: "results" # Path for local results
 gamma: 0.99
 batch_size: 32 # Number of episodes to train on
 buffer_size: 32 # Size of the replay buffer
-lr: 0.001 # Learning rate for agents
+lr: 0.005 # Learning rate for agents
 critic_lr: 0.0005 # Learning rate for critics
 optim_alpha: 0.001 # RMSProp alpha  earning_rate=0.001,
 optim_beta1: 0.9
 optim_beta2: 0.999
-optim_eps: 0.0001 # Adam epsilon
+optim_eps: 0.00001 # Adam epsilon
 grad_norm_clip: 10 # Reduce magnitude of gradients above this L2 norm
 
 # --- Agent parameters ---
