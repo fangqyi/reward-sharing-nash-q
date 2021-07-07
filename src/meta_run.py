@@ -191,15 +191,34 @@ def run_distance_sequential(args, logger):
 
                 learner.train(episode_sample, runner.t_env, episode)
 
-            if (runner.t_env - last_log_T) >= args.log_interval:
-                logger.log_stat("episode", episode, runner.t_env)
-                logger.print_recent_stats()
-                last_log_T = runner.t_env
+                # Execute test runs once in a while
+                n_test_runs = max(1, args.test_nepisode // runner.batch_size)
+                if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
+                    last_test_T = runner.t_env
+                    for _ in range(n_test_runs):
+                        runner.run(z_q, z_p, test_mode=True)
+
+        if (runner.t_env - last_log_T) >= args.log_interval:
+            logger.log_stat("episode", episode, runner.t_env)
+            logger.print_recent_stats()
+            last_log_T = runner.t_env
+
+        if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
+            model_save_time = runner.t_env
+            save_path = os.path.join(args.local_results_path, "pretrained_models", args.unique_token, str(runner.t_env))
+            # "results/models/{}".format(unique_token)
+            os.makedirs(save_path, exist_ok=True)
+            logger.console_logger.info("Saving models to {}".format(save_path))
+
+            # learner should handle saving/loading -- delegate actor save/load to mac,
+            # use appropriate filenames to do critics, optimizer states
+            learner.save_models(save_path)
 
         episode += args.batch_size_run
 
     logger.console_logger.info("Beginning training for {} timesteps".format(args.total_z_training_steps*args.env_steps_every_z))
 
+    episode = 0
     runner.t_env = 0
     last_log_T = 0
     z_train_steps = 0

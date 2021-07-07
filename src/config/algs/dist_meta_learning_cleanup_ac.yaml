@@ -10,7 +10,7 @@ epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 750000
 
-buffer_size: 5000
+buffer_size: 10000
 
 #
 meta_t_max:
@@ -26,7 +26,7 @@ z_critic_lr: 0.0001
 z_update_lr: 0.0001
 
 # update the target network every {} episodes
-target_update_interval: 200
+target_update_interval: 20
 
 # use the Q_Learner to train
 agent_output_type: "q"
