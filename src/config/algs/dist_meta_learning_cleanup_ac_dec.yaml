@@ -26,7 +26,7 @@ z_critic_lr: 0.0001
 z_update_lr: 0.005
 
 # update the target network every {} episodes
-target_update_interval: 50
+target_update_interval: 20
 
 # use the Q_Learner to train
 agent_output_type: "q"
