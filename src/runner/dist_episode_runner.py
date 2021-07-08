@@ -189,13 +189,13 @@ class DistEpisodeRunner:
                                  self.t_env)
             self.logger.log_stat(prefix + "agent {} post-sharing return_std".format(agent_idx), np.std(agent_returns),
                                  self.t_env)
-            print("agent_returns after distribution")
-            print(agent_returns)
+            # print("agent_returns after distribution")
+            # print(agent_returns)
             agent_returns = [returns[t][agent_idx] for t in range(len(returns))]
             self.logger.log_stat(prefix + "agent {} original return_mean".format(agent_idx), np.mean(agent_returns),
                                  self.t_env)
-            print("agent_returns")
-            print(agent_returns)
+            # print("agent_returns")
+            # print(agent_returns)
             self.logger.log_stat(prefix + "agent {} original return_std".format(agent_idx), np.std(agent_returns),
                                  self.t_env)
 
