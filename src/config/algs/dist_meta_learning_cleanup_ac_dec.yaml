@@ -2,7 +2,7 @@ critic_hidden_sizes: [64, 64]
 learner: "meta_learner"
 runner: "dist_episode"
 mac: "latent_dist"
-total_z_training_steps: 50000
+total_z_training_steps: 5000
 env_steps_every_z: 50000
 z_sample_runs: 10
 
@@ -16,7 +16,7 @@ buffer_size: 10000
 meta_t_max:
 meta_type: "distance_latent"
 latent_relation_space_dim: 4
-latent_relation_space_upper_bound: 10.0
+latent_relation_space_upper_bound: 1.0
 latent_relation_space_lower_bound: 0.0
 latent_var_dim: 8
 latent_encoder_hidden_sizes: [32, 32]
