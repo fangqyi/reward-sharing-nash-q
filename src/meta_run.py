@@ -243,6 +243,7 @@ def run_distance_sequential(args, logger):
     while z_train_steps <= args.total_z_training_steps:
 
         env_steps_threshold += args.env_steps_every_z
+        mac.init_epsilon_schedule(train_phase)
         while runner.t_env <= env_steps_threshold:
             # Run for a whole episode at a time
 
@@ -306,8 +307,8 @@ def run_distance_sequential(args, logger):
         # logger.log_vec(tag="agent 1 z_q", mat=z_q[1], global_step=runner.t_env)
         logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
         logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
-        logger.console_logger.info("{} t_env: {} / {}".format(train_phase, runner.t_env, t_max))
-        logger.console_logger.info("{} estimated time left: {}. Time passed: {}".format(train_phase,
+        logger.console_logger.info("t_env: {} / {}".format(train_phase, runner.t_env, t_max))
+        logger.console_logger.info("estimated time left: {}. Time passed: {}".format(train_phase,
             time_left(last_time, last_test_T, runner.t_env, t_max), time_str(time.time() - start_time)))
         last_time = time.time()
 
@@ -321,7 +322,6 @@ def run_distance_sequential(args, logger):
         if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
             model_save_time = runner.t_env
             save_path = os.path.join(args.local_results_path, "models", args.unique_token, str(runner.t_env))
-            # "results/models/{}".format(unique_token)
             os.makedirs(save_path, exist_ok=True)
             logger.console_logger.info("Saving models to {}".format(save_path))
 

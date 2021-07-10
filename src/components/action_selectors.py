@@ -9,11 +9,19 @@ REGISTRY = {}
 
 class EpsilonGreedyActionSelector():
 
-    def __init__(self, args):
+    def __init__(self, args, train_phase):
         self.args = args
 
-        self.schedule = DecayThenFlatSchedule(args.epsilon_start, args.epsilon_finish, args.epsilon_anneal_time,
-                                              decay="linear")
+        if train_phase == "pretrain":
+            epsilon_start = args.pretrain_epsilon_start
+            epsilon_finish = args.pretrain_epsilon_finish
+            epsilon_anneal_time = args.pretrain_epilson_anneal_time
+        else:
+            epsilon_start = args.train_epsilon_start
+            epsilon_finish = args.train_epsilon_finish
+            epsilon_anneal_time = args.train_epilson_anneal_time
+
+        self.schedule = DecayThenFlatSchedule(epsilon_start, epsilon_finish, epsilon_anneal_time, decay="linear")
         self.epsilon = self.schedule.eval(0)
 
     def select_action(self, agent_inputs, avail_actions, t_env, test_mode=False):

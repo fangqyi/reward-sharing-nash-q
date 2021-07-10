@@ -9,17 +9,20 @@ from module.utils import MLPMultiGaussianEncoder
 
 
 class BasicLatentMAC:
-    def __init__(self, scheme, groups, args):
+    def __init__(self, scheme, groups, args, train_phase):
         self.n_agents = args.n_agents
         self.args = args
         self.scheme = scheme
         self._build_agents()
         self.agent_output_type = args.agent_output_type
-        self.action_selector = EpsilonGreedyActionSelector(args)
+        self.action_selector = EpsilonGreedyActionSelector(args, train_phase)
         latent_input_shape, latent_output_shape, latent_hidden_sizes = self._get_latent_shapes()
         self.latent_encoder = MLPMultiGaussianEncoder(latent_input_shape, latent_output_shape, latent_hidden_sizes)
 
         self.hidden_states = None
+
+    def init_epsilon_schedule(self, phase):
+        self.action_selector = EpsilonGreedyActionSelector(self.args, phase)
 
     def select_actions(self, ep_batch, t_ep, t_env, bs=slice(None), test_mode=False):
         # Only select actions for the selected batch elements in bs
