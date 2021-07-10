@@ -15,11 +15,11 @@ class EpsilonGreedyActionSelector():
         if train_phase == "pretrain":
             epsilon_start = args.pretrain_epsilon_start
             epsilon_finish = args.pretrain_epsilon_finish
-            epsilon_anneal_time = args.pretrain_epilson_anneal_time
+            epsilon_anneal_time = args.pretrain_epsilon_anneal_time
         else:
             epsilon_start = args.train_epsilon_start
             epsilon_finish = args.train_epsilon_finish
-            epsilon_anneal_time = args.train_epilson_anneal_time
+            epsilon_anneal_time = args.train_epsilon_anneal_time
 
         self.schedule = DecayThenFlatSchedule(epsilon_start, epsilon_finish, epsilon_anneal_time, decay="linear")
         self.epsilon = self.schedule.eval(0)
