@@ -6,9 +6,13 @@ total_z_training_steps: 50000
 env_steps_every_z: 10000
 z_sample_runs: 10
 
-epsilon_start: 1.0
-epsilon_finish: 0.05
-epsilon_anneal_time: 750000
+pretrain_epsilon_start: 1.0
+pretrain_epsilon_finish: 0.05
+pretrain_epsilon_anneal_time: 750000
+
+train_epsilon_start: 1.0
+train_epsilon_finish: 0.05
+train_epsilon_anneal_time: 5000
 
 buffer_size: 10000
 
