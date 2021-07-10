@@ -46,5 +46,5 @@ agent: "rnn_agent_image_vec"
 centralized_social_welfare: True
 
 load_pretrained_model: True
-pretrained_model_load_path: "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_centralized__2021-07-07_20-40-57/1201600"
+pretrained_model_load_path: "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_centralized__2021-07-07_20-40-57/1401600"
 
