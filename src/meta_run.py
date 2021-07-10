@@ -115,8 +115,10 @@ def run_distance_sequential(args, logger):
                           preprocess=preprocess,
                           device="cpu" if args.buffer_cpu_only else args.device)
 
+    train_phase = "pretrain"
+
     # Setup multiagent controller here
-    mac = mac_REGISTRY[args.mac](buffer.scheme, groups, args)
+    mac = mac_REGISTRY[args.mac](buffer.scheme, groups, args, train_phase)
 
     # Give runner the scheme
     runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, mac=mac)
@@ -168,7 +170,6 @@ def run_distance_sequential(args, logger):
     start_time = time.time()
     last_time = start_time
 
-    train_phase = "pretrain"
     if args.load_pretrained_model:
         logger.console_logger.info("Loading meta-training model")
 
