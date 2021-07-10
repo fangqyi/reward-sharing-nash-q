@@ -270,7 +270,7 @@ def run_distance_sequential(args, logger):
 
         episode_returns = []
         for _ in range(args.z_sample_runs):
-            episode_returns.append(runner.run(z_q, z_p, test_mode=True, sample_return_mode=True))
+            episode_returns.append(runner.run(z_q, z_p, test_mode=True, sample_return_mode=True, train_phase=train_phase))
 
         data = {"z_p": z_p, "z_q": z_q, "evals": episode_returns}
 
