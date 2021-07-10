@@ -168,14 +168,15 @@ def run_distance_sequential(args, logger):
     start_time = time.time()
     last_time = start_time
 
+    train_phase = "pretrain"
     if args.load_pretrained_model:
-        logger.console_logger.info("Loading meta-training model".format(args.total_pretrain_steps))
+        logger.console_logger.info("Loading meta-training model")
+
         learner.load_models(args.pretrained_model_load_path)
     else:
         logger.console_logger.info("Beginning meta-training for {} timesteps".format(args.total_pretrain_steps))
 
         tasks = generate_dist_distributions(args)
-        train_phase = "pretrain"
         while runner.t_env <= args.total_pretrain_steps:
             for z_q, z_p in tasks:
                 # Run for a whole episode at a time
@@ -211,7 +212,6 @@ def run_distance_sequential(args, logger):
             if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
                 model_save_time = runner.t_env
                 save_path = os.path.join(args.local_results_path, "pretrained_models", args.unique_token, str(runner.t_env))
-                # "results/models/{}".format(unique_token)
                 os.makedirs(save_path, exist_ok=True)
                 logger.console_logger.info("Saving models to {}".format(save_path))
 
@@ -222,11 +222,14 @@ def run_distance_sequential(args, logger):
 
     logger.console_logger.info("Beginning training for {} timesteps".format(args.total_z_training_steps*args.env_steps_every_z))
 
+    # reinitialize training parameters
     episode = 0
     runner.t_env = 0
     last_log_T = 0
     z_train_steps = 0
     env_steps_threshold = 0
+
+    # initialize sharing scheme and its optimizer
     z_p, z_q = generate_dist_distributions(args, num=1)
     params = [z_p, z_q]
     z_optimiser = torch.optim.Adam(params=params, lr=args.z_update_lr, eps=args.optim_eps)
@@ -283,7 +286,6 @@ def run_distance_sequential(args, logger):
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"]) / args.z_sample_runs
         else:
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"], dim=0) / args.z_sample_runs
-
         learner.z_train(critic_train_batch, z_train_steps)
 
         # update z_q, z_p
