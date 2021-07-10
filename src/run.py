@@ -362,7 +362,7 @@ def run_pq_sequential(args, logger):
 
         episode_returns = []
         for _ in range(args.pq_sample_runs):
-            episode_returns.append(runner.run(p, q, test_mode=True, sample_mode=True))
+            episode_returns.append(runner.run(p, q, test_mode=True, sample_return_mode=True))
         data = {"p": p, "q": q, "evals": episode_returns}
         train_batch = {}
         for k, v in data.items():
@@ -545,7 +545,7 @@ def run_distance_sequential(args, logger):
 
         episode_returns = []
         for _ in range(args.pq_sample_runs):
-            episode_returns.append(runner.run(p, q, test_mode=True, sample_mode=True))
+            episode_returns.append(runner.run(p, q, test_mode=True, sample_return_mode=True))
         data = {"p": p, "q": q, "evals": episode_returns}
         train_batch = {}
         for k, v in data.items():

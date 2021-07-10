@@ -57,7 +57,7 @@ class DistEpisodeRunner:
         self.env.reset()
         self.t = 0
 
-    def run(self, z_q, z_p, test_mode=False, sample_mode=False):  # run one eps
+    def run(self, z_q, z_p, test_mode=False, sample_return_mode=False, train_phase="pretrain"):  # run one eps
         self.reset()
 
         if isinstance(z_p, torch.Tensor):
@@ -107,7 +107,7 @@ class DistEpisodeRunner:
             # calculate distance
             dist = []
             for giver in range(self.n_agents):
-                dist.append(softmax([0.0 - distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(self.n_agents)]))
+                dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(self.n_agents)]))
 
             for receiver in range(self.n_agents):
                 for giver in range(self.n_agents):
@@ -169,34 +169,32 @@ class DistEpisodeRunner:
         cur_returns.append(episode_return)
         cur_dis_returns.append(distributed_return)
         if test_mode and (len(self.test_returns) == self.args.test_nepisode):
-            self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix)
+            self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase)
         elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:
-            self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix)
+            self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase)
             if hasattr(self.mac.action_selector, "epsilon"):
                 self.logger.log_stat("epsilon", self.mac.action_selector.epsilon, self.t_env)
             self.log_train_stats_t = self.t_env
 
-        if sample_mode:
+        if sample_return_mode:
+            # return return (for training)
             return distributed_return
         else:
+            # return sample batch
             return self.batch
 
-    def _log(self, returns, dis_returns, stats, prefix):
+    def _log(self, returns, dis_returns, stats, prefix, train_phase):
         # self.logger.console_logger.info("Agent rewards:")
         for agent_idx in range(self.n_agents):
             agent_returns = [dis_returns[t][agent_idx] for t in range(len(dis_returns))]
-            self.logger.log_stat(prefix + "agent {} post-sharing return_mean".format(agent_idx), np.mean(agent_returns),
+            self.logger.log_stat("{} {} agent {} post-sharing return_mean".format(train_phase, prefix, agent_idx), np.mean(agent_returns),
                                  self.t_env)
-            self.logger.log_stat(prefix + "agent {} post-sharing return_std".format(agent_idx), np.std(agent_returns),
+            self.logger.log_stat("{} {} agent {} post-sharing return_std".format(train_phase, prefix, agent_idx), np.std(agent_returns),
                                  self.t_env)
-            # print("agent_returns after distribution")
-            # print(agent_returns)
             agent_returns = [returns[t][agent_idx] for t in range(len(returns))]
-            self.logger.log_stat(prefix + "agent {} original return_mean".format(agent_idx), np.mean(agent_returns),
+            self.logger.log_stat("{} {} agent {} original return_mean".format(train_phase, prefix, agent_idx), np.mean(agent_returns),
                                  self.t_env)
-            # print("agent_returns")
-            # print(agent_returns)
-            self.logger.log_stat(prefix + "agent {} original return_std".format(agent_idx), np.std(agent_returns),
+            self.logger.log_stat("{} {} agent {} original return_std".format(train_phase, prefix, agent_idx), np.std(agent_returns),
                                  self.t_env)
 
         returns.clear()
@@ -204,7 +202,7 @@ class DistEpisodeRunner:
 
         for k, v in stats.items():
             if k != "n_episodes" and not isinstance(v, list):
-                self.logger.log_stat(prefix + k + "_mean", v / stats["n_episodes"], self.t_env)
+                self.logger.log_stat("{} {}{}_mean".format(train_phase, prefix, k), v / stats["n_episodes"], self.t_env)
         stats.clear()
 
 

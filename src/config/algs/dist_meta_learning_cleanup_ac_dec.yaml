@@ -2,8 +2,8 @@ critic_hidden_sizes: [64, 64]
 learner: "meta_learner"
 runner: "dist_episode"
 mac: "latent_dist"
-total_z_training_steps: 5000
-env_steps_every_z: 50000
+total_z_training_steps: 50000
+env_steps_every_z: 10000
 z_sample_runs: 10
 
 epsilon_start: 1.0
@@ -22,8 +22,8 @@ latent_var_dim: 8
 latent_encoder_hidden_sizes: [32, 32]
 pretrained_task_num: 32
 total_pretrain_steps: 1500000
-z_critic_lr: 0.0001
-z_update_lr: 0.005
+z_critic_lr: 0.001
+z_update_lr: 0.05
 
 # update the target network every {} episodes
 target_update_interval: 20
@@ -44,3 +44,6 @@ agent: "rnn_agent_image_vec"
 
 #
 centralized_social_welfare: False
+
+load_pretrained_model: True
+pretrained_model_load_path: "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_decentralized__2021-07-08_00-02-20/1401600"
