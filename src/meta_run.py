@@ -308,8 +308,8 @@ def run_distance_sequential(args, logger):
         # logger.log_vec(tag="agent 1 z_q", mat=z_q[1], global_step=runner.t_env)
         logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
         logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
-        logger.console_logger.info("t_env: {} / {}".format(train_phase, runner.t_env, t_max))
-        logger.console_logger.info("estimated time left: {}. Time passed: {}".format(train_phase,
+        logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
+        logger.console_logger.info("estimated time left: {}. Time passed: {}".format(
             time_left(last_time, last_test_T, runner.t_env, t_max), time_str(time.time() - start_time)))
         last_time = time.time()
 
