@@ -169,9 +169,9 @@ class DistEpisodeRunner:
         cur_returns.append(episode_return)
         cur_dis_returns.append(distributed_return)
         if test_mode and (len(self.test_returns) == self.args.test_nepisode):
-            self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase)
+            self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase, z_q_cp, z_p_cp)
         elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:
-            self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase)
+            self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase, z_q_cp, z_p_cp)
             if hasattr(self.mac.action_selector, "epsilon"):
                 self.logger.log_stat("epsilon", self.mac.action_selector.epsilon, self.t_env)
             self.log_train_stats_t = self.t_env
@@ -183,19 +183,31 @@ class DistEpisodeRunner:
             # return sample batch
             return self.batch
 
-    def _log(self, returns, dis_returns, stats, prefix, train_phase):
+    def _log(self, returns, dis_returns, stats, prefix, train_phase, z_q, z_p):
         # self.logger.console_logger.info("Agent rewards:")
+        if train_phase == "pretrain" and prefix == "test_":
+            struct_prefix = get_flat_str(z_q, "z_q:_") + "|" + get_flat_str(z_p, "z_p:_") + "|"
+        else:
+            struct_prefix = ""
         for agent_idx in range(self.n_agents):
             agent_returns = [dis_returns[t][agent_idx] for t in range(len(dis_returns))]
-            self.logger.log_stat("{} {} agent {} post-sharing return_mean".format(train_phase, prefix, agent_idx), np.mean(agent_returns),
-                                 self.t_env)
-            self.logger.log_stat("{} {} agent {} post-sharing return_std".format(train_phase, prefix, agent_idx), np.std(agent_returns),
-                                 self.t_env)
+            self.logger.log_stat(
+                "{}_{}{}agent {} post-sharing return_mean".format(train_phase, struct_prefix, prefix, agent_idx),
+                np.mean(agent_returns),
+                self.t_env)
+            self.logger.log_stat(
+                "{}_{}{}agent {} post-sharing return_std".format(train_phase, struct_prefix, prefix, agent_idx),
+                np.std(agent_returns),
+                self.t_env)
             agent_returns = [returns[t][agent_idx] for t in range(len(returns))]
-            self.logger.log_stat("{} {} agent {} original return_mean".format(train_phase, prefix, agent_idx), np.mean(agent_returns),
-                                 self.t_env)
-            self.logger.log_stat("{} {} agent {} original return_std".format(train_phase, prefix, agent_idx), np.std(agent_returns),
-                                 self.t_env)
+            self.logger.log_stat(
+                "{}_{}{}agent {} original return_mean".format(train_phase, struct_prefix, prefix, agent_idx),
+                np.mean(agent_returns),
+                self.t_env)
+            self.logger.log_stat(
+                "{}_{}{}agent {} original return_std".format(train_phase, struct_prefix, prefix, agent_idx),
+                np.std(agent_returns),
+                self.t_env)
 
         returns.clear()
         dis_returns.clear()
@@ -204,6 +216,14 @@ class DistEpisodeRunner:
             if k != "n_episodes" and not isinstance(v, list):
                 self.logger.log_stat("{} {}{}_mean".format(train_phase, prefix, k), v / stats["n_episodes"], self.t_env)
         stats.clear()
+
+
+def get_flat_str(t, prefix):
+    t = t.view(-1)
+    str_t = ""
+    for i in range(t.shape[0]):
+        str_t = "{}_{}".format(str_t, t[i]) if i != 0 else "{}".format(t[i])
+    return prefix + str_t
 
 
 def softmax(vector):
