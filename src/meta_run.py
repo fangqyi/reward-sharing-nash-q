@@ -380,7 +380,7 @@ def gen_uniform_tasks(args):
 
     from itertools import combinations
     tasks = list(combinations(tasks, args.n_agents))
-    return [torch.stack(task, dim=0) for task in tasks]
+    return [torch.stack(task, dim=0).unsqueeze(dim=0) for task in tasks]
 
 def gen_uniform_tasks_dim(dim_num, cur_dim, div_num, lower, upper):
     if cur_dim == dim_num:
