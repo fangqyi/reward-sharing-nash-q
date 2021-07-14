@@ -180,6 +180,8 @@ def run_distance_sequential(args, logger):
 
         if args.deterministic_pretrained_tasks:
             tasks = gen_uniform_tasks(args)
+        elif args.hardcoded_pretrained_tasks:
+            tasks = get_hardcoded_tasks(args)
         else:
             tasks = sample_dist_norm(args)
         while runner.t_env <= args.total_pretrain_steps:
