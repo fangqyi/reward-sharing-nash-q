@@ -378,9 +378,9 @@ def gen_uniform_tasks(args):
     tasks = gen_uniform_tasks_dim(dim_num, 0, divides, lower, upper)
     tasks = [torch.tensor(task, dtype=torch.float) for task in tasks]
 
-    from itertools import combinations
-    tasks = list(combinations(tasks, args.n_agents))
-    return list(combinations([torch.stack(task, dim=0).unsqueeze(dim=0) for task in tasks], 2))
+    from itertools import combinations_with_replacement
+    tasks = list(combinations_with_replacement(tasks, args.n_agents))
+    return list(combinations_with_replacement([torch.stack(task, dim=0).unsqueeze(dim=0) for task in tasks], 2))
 
 def gen_uniform_tasks_dim(dim_num, cur_dim, div_num, lower, upper):
     if cur_dim == dim_num:
