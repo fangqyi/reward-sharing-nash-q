@@ -35,7 +35,7 @@ target_update_interval: 20
 # use the Q_Learner to train
 agent_output_type: "q"
 
-is_obs_image: True
+is_obs_image: True  # true for cleanup env
 
 # conv params
 kernel_size: 3
@@ -46,8 +46,11 @@ name: "dist_meta_learning_cleanup_decentralized"
 
 agent: "rnn_agent_image_vec"
 
-#
+# centralized critic and altruistic agents
 centralized_social_welfare: False
 
 load_pretrained_model: True
 pretrained_model_load_path: "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_decentralized__2021-07-08_00-02-20/1401600"
+
+# debug: test if deterministic sharing schemes improve performance
+deterministic_pretrained_tasks: False

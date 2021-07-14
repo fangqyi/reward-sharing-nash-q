@@ -81,6 +81,7 @@ def evaluate_sequential(args, runner):
 
     runner.close_env()
 
+
 # meta-training runner
 def run_distance_sequential(args, logger):
     # Init runner so we can get env info
@@ -177,7 +178,10 @@ def run_distance_sequential(args, logger):
     else:
         logger.console_logger.info("Beginning meta-training for {} timesteps".format(args.total_pretrain_steps))
 
-        tasks = generate_dist_distributions(args)
+        if args.deterministic_pretrained_tasks:
+            tasks = gen_uniform_tasks(args)
+        else:
+            tasks = sample_dist_norm(args)
         while runner.t_env <= args.total_pretrain_steps:
             for z_q, z_p in tasks:
                 # Run for a whole episode at a time
@@ -212,7 +216,8 @@ def run_distance_sequential(args, logger):
 
             if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
                 model_save_time = runner.t_env
-                save_path = os.path.join(args.local_results_path, "pretrained_models", args.unique_token, str(runner.t_env))
+                save_path = os.path.join(args.local_results_path, "pretrained_models", args.unique_token,
+                                         str(runner.t_env))
                 os.makedirs(save_path, exist_ok=True)
                 logger.console_logger.info("Saving models to {}".format(save_path))
 
@@ -221,7 +226,8 @@ def run_distance_sequential(args, logger):
                 learner.save_models(save_path)
             episode += args.batch_size_run
 
-    logger.console_logger.info("Beginning training for {} timesteps".format(args.total_z_training_steps*args.env_steps_every_z))
+    logger.console_logger.info(
+        "Beginning training for {} timesteps".format(args.total_z_training_steps * args.env_steps_every_z))
 
     # reinitialize training parameters
     episode = 0
@@ -231,7 +237,7 @@ def run_distance_sequential(args, logger):
     env_steps_threshold = 0
 
     # initialize sharing scheme and its optimizer
-    z_p, z_q = generate_dist_distributions(args, num=1)
+    z_p, z_q = sample_dist_norm(args, num=1)
     params = [z_p, z_q]
     z_optimiser = torch.optim.Adam(params=params, lr=args.z_update_lr, eps=args.optim_eps)
 
@@ -270,7 +276,8 @@ def run_distance_sequential(args, logger):
 
         episode_returns = []
         for _ in range(args.z_sample_runs):
-            episode_returns.append(runner.run(z_q, z_p, test_mode=True, sample_return_mode=True, train_phase=train_phase))
+            episode_returns.append(
+                runner.run(z_q, z_p, test_mode=True, sample_return_mode=True, train_phase=train_phase))
 
         data = {"z_p": z_p, "z_q": z_q, "evals": episode_returns}
 
@@ -341,26 +348,53 @@ def run_distance_sequential(args, logger):
     logger.console_logger.info("Finished Training")
 
 
-def generate_dist_distributions(args, num=None):
+def sample_dist_norm(args, num=None):
     # [(z_q, z_p)]: z_q: [n_agents][space_dim]
-    # FIXME: any better (more spreading) way than uniform?
     lower = args.latent_relation_space_lower_bound
     upper = args.latent_relation_space_upper_bound
 
     size = torch.Size([args.n_agents, args.latent_relation_space_dim])
-    dim = args.latent_relation_space_dim
+    dim_num = args.latent_relation_space_dim
     if num is None:
         distribution = Uniform(torch.tensor([lower], dtype=torch.float), torch.tensor([upper], dtype=torch.float))
-        return [(distribution.sample(size).view(1, args.n_agents, dim),
-                  distribution.sample(size).view(1, args.n_agents, dim))
-                 for _ in range(args.pretrained_task_num)]
+        return [(distribution.sample(size).view(1, args.n_agents, dim_num),
+                 distribution.sample(size).view(1, args.n_agents, dim_num))
+                for _ in range(args.pretrained_task_num)]
     else:
         distribution = Uniform(torch.tensor([lower], dtype=torch.float).to(args.device),
                                torch.tensor([upper], dtype=torch.float).to(args.device))
-        z = (distribution.sample(size).view(args.n_agents, dim), distribution.sample(size).view(args.n_agents, dim))
+        z = (
+        distribution.sample(size).view(args.n_agents, dim_num), distribution.sample(size).view(args.n_agents, dim_num))
         z[0].requires_grad = True
         z[1].requires_grad = True
         return z
+
+# test to see if guaranteed task distribution
+def gen_uniform_tasks(args):
+    lower = args.latent_relation_space_lower_bound
+    upper = args.latent_relation_space_upper_bound
+    divides = args.div_num
+    dim_num = args.latent_relation_space_dim
+    tasks = gen_uniform_tasks_dim(dim_num, 0, divides, lower, upper)
+    tasks = [torch.tensor(task, dtype=torch.float) for task in tasks]
+
+    from itertools import combinations
+    tasks = list(combinations(tasks, args.n_agents))
+    return [torch.stack(task, dim=0) for task in tasks]
+
+def gen_uniform_tasks_dim(dim_num, cur_dim, div_num, lower, upper):
+    if cur_dim == dim_num:
+        return [[]]
+    old_ret = gen_uniform_tasks_dim(dim_num, cur_dim + 1, div_num, lower, upper)
+    ret = []
+    for div in range(0, div_num+1):
+        new_val = lower + div * (upper - lower) / div_num
+        for l in old_ret:
+            t = l.copy()
+            t.append(new_val)
+            ret.append(t)
+    return ret
+
 
 def args_sanity_check(config, _log):
     # set CUDA flags
