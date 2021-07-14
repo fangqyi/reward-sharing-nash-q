@@ -53,4 +53,4 @@ load_pretrained_model: False
 
 # debug: test if deterministic sharing schemes improve performance
 deterministic_pretrained_tasks: True
-div_nums: 2
+div_num: 2
