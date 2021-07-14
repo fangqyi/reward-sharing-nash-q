@@ -369,7 +369,14 @@ def sample_dist_norm(args, num=None):
         z[1].requires_grad = True
         return z
 
-# test to see if guaranteed task distribution
+# test on simple hardcoded example
+def get_hardcoded_tasks(args):
+    tasks = []
+    for z_q, z_p in zip(args.hardcoded_tasks_zq, args.hardcoded_tasks_zp):
+        tasks.append((torch.tensor(z_q, dtype=torch.float), torch.tensor(z_p, dtype=torch.float)))
+    return tasks
+
+# test to see if guaranteed uniform task distribution improve performances
 def gen_uniform_tasks(args):
     lower = args.latent_relation_space_lower_bound
     upper = args.latent_relation_space_upper_bound

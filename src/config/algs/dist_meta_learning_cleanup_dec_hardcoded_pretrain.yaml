@@ -20,7 +20,7 @@ buffer_size: 10000
 meta_t_max:
 meta_type: "distance_latent"
 latent_relation_space_dim: 1
-latent_relation_space_upper_bound: 1.5
+latent_relation_space_upper_bound: 10.0
 latent_relation_space_lower_bound: 0.0
 latent_var_dim: 2
 latent_encoder_hidden_sizes: [32, 32]
@@ -56,4 +56,6 @@ deterministic_pretrained_tasks: True
 div_num: 2
 
 # debug: hardcoded pretraining sharing schemes
-hardcoded_pretrained_tasks: False
+hardcoded_pretrained_tasks: True
+hardcoded_tasks_zp: [[0,0], [0,10]]
+hardcoded_tasks_zq: [[0,0], [0,10]]
