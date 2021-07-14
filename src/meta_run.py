@@ -355,12 +355,12 @@ def sample_dist_norm(args, num=None):
 
     size = torch.Size([args.n_agents, args.latent_relation_space_dim])
     dim_num = args.latent_relation_space_dim
-    if num is None:
+    if num is None:  # for pretrain
         distribution = Uniform(torch.tensor([lower], dtype=torch.float), torch.tensor([upper], dtype=torch.float))
         return [(distribution.sample(size).view(1, args.n_agents, dim_num),
                  distribution.sample(size).view(1, args.n_agents, dim_num))
                 for _ in range(args.pretrained_task_num)]
-    else:
+    else:  # for train
         distribution = Uniform(torch.tensor([lower], dtype=torch.float).to(args.device),
                                torch.tensor([upper], dtype=torch.float).to(args.device))
         z = (
@@ -380,7 +380,7 @@ def gen_uniform_tasks(args):
 
     from itertools import combinations
     tasks = list(combinations(tasks, args.n_agents))
-    return [torch.stack(task, dim=0).unsqueeze(dim=0) for task in tasks]
+    return list(combinations([torch.stack(task, dim=0).unsqueeze(dim=0) for task in tasks], 2))
 
 def gen_uniform_tasks_dim(dim_num, cur_dim, div_num, lower, upper):
     if cur_dim == dim_num:
