@@ -219,7 +219,7 @@ class DistEpisodeRunner:
 
 
 def get_flat_str(t, prefix):
-    t = t.view(-1)
+    t = t.flatten()
     str_t = ""
     for i in range(t.shape[0]):
         str_t = "{}_{}".format(str_t, t[i]) if i != 0 else "{}".format(t[i])
