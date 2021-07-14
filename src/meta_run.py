@@ -373,7 +373,7 @@ def sample_dist_norm(args, num=None):
 def get_hardcoded_tasks(args):
     tasks = []
     for z_q, z_p in zip(args.hardcoded_tasks_zq, args.hardcoded_tasks_zp):
-        tasks.append((torch.tensor(z_q, dtype=torch.float), torch.tensor(z_p, dtype=torch.float)))
+        tasks.append((torch.tensor(z_q, dtype=torch.float).unsqueeze(0), torch.tensor(z_p, dtype=torch.float).unsqueeze(0)))
     return tasks
 
 # test to see if guaranteed uniform task distribution improve performances
