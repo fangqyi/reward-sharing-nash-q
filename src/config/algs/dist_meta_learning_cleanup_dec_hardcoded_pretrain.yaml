@@ -52,7 +52,7 @@ centralized_social_welfare: False
 load_pretrained_model: False
 
 # debug: test if deterministic sharing schemes improve performance
-deterministic_pretrained_tasks: True
+deterministic_pretrained_tasks: False
 div_num: 2
 
 # debug: hardcoded pretraining sharing schemes
