@@ -208,16 +208,13 @@ def run_distance_sequential(args, logger):
 
                     learner.train(episode_sample, runner.t_env, episode)
 
-                    # Execute test runs once in a while
-                    n_test_runs = max(1, args.test_nepisode // runner.batch_size)
-                    if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
-                        last_test_T = runner.t_env
-                        print("test")
-                        print(z_q)
-                        print(z_p)
-                        print()
-                        for _ in range(n_test_runs):
-                            runner.run(z_q, z_p, test_mode=True, train_phase=train_phase)
+            # Execute test runs once in a while
+            n_test_runs = max(1, args.test_nepisode // runner.batch_size)
+            if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
+                last_test_T = runner.t_env
+                for z_q, z_p in tasks:
+                    for _ in range(n_test_runs):
+                        runner.run(z_q, z_p, test_mode=True, train_phase=train_phase)
 
             if (runner.t_env - last_log_T) >= args.log_interval:
                 logger.log_stat("episode", episode, runner.t_env)
