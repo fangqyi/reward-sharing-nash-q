@@ -184,6 +184,7 @@ def run_distance_sequential(args, logger):
             tasks = get_hardcoded_tasks(args)
         else:
             tasks = sample_dist_norm(args)
+        print(len(tasks))
         while runner.t_env <= args.total_pretrain_steps:
             for z_q, z_p in tasks:
                 # Run for a whole episode at a time
