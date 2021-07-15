@@ -57,5 +57,5 @@ div_num: 2
 
 # debug: hardcoded pretraining sharing schemes
 hardcoded_pretrained_tasks: True
-hardcoded_tasks_zp: [[0,0], [0,10]]
-hardcoded_tasks_zq: [[0,0], [0,10]]
+hardcoded_tasks_zp: [[0,10]]
+hardcoded_tasks_zq: [[0,10]]
