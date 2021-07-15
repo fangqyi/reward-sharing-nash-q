@@ -184,7 +184,6 @@ def run_distance_sequential(args, logger):
             tasks = get_hardcoded_tasks(args)
         else:
             tasks = sample_dist_norm(args)
-        print(len(tasks))
         while runner.t_env <= args.total_pretrain_steps:
             for z_q, z_p in tasks:
                 # Run for a whole episode at a time
@@ -210,6 +209,9 @@ def run_distance_sequential(args, logger):
                     if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
                         last_test_T = runner.t_env
                         for _ in range(n_test_runs):
+                            print(z_q)
+                            print(z_p)
+                            print()
                             runner.run(z_q, z_p, test_mode=True, train_phase=train_phase)
 
             if (runner.t_env - last_log_T) >= args.log_interval:
