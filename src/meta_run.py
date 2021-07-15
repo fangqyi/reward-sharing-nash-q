@@ -187,10 +187,6 @@ def run_distance_sequential(args, logger):
         while runner.t_env <= args.total_pretrain_steps:
             for z_q, z_p in tasks:
                 # Run for a whole episode at a time
-                print("train")
-                print(z_q)
-                print(z_p)
-                print()
                 z_q_cp = z_q.clone()
                 z_p_cp = z_p.clone()
                 episode_batch = runner.run(z_q=z_q_cp, z_p=z_p_cp, test_mode=False, train_phase=train_phase)
