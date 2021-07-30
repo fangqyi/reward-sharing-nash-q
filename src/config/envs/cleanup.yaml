@@ -6,7 +6,7 @@ n_agents: 2
 obs_height: 9
 obs_width: 9
 # -----------------------------------
-episode_limit: 50
+episode_limit: 70
 cleaning_penalty: 0.0
 disable_left_right_action: False
 disable_rotation_action: True
@@ -14,6 +14,7 @@ disable_rotation_action: True
 # whether the other agent used the cleaning beam
 # Else, observe the full 1-hot action of other agent
 obs_cleaned_1hot: True
+map_source: 'customized'
 map_name: 'cleanup_small_sym'
 shuffle_spawn: False
 view_size: 4 # 7

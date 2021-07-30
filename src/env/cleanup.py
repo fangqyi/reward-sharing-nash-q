@@ -8,7 +8,7 @@ from social_dilemmas.envs.cleanup import CleanupEnv
 
 from env.multiagentenv import MultiAgentEnv
 from utils.configdict import ConfigDict
-
+import env.cleanup_maps as customized_maps
 
 class Cleanup(MultiAgentEnv):
 
@@ -49,10 +49,16 @@ class Cleanup(MultiAgentEnv):
 
         self.n_agents = self.args.n_agents
 
-        if self.args.map_name == 'cleanup_small_sym':
-            ascii_map = maps.CLEANUP_SMALL_SYM
-        elif self.args.map_name == 'cleanup_10x10_sym':
-            ascii_map = maps.CLEANUP_10x10_SYM
+        if self.args.map_source == 'lio':
+            if self.args.map_name == 'cleanup_small_sym':
+                ascii_map = maps.CLEANUP_SMALL_SYM
+            elif self.args.map_name == 'cleanup_10x10_sym':
+                ascii_map = maps.CLEANUP_10x10_SYM
+        elif self.args.map_source == "customized":
+            if self.args.map_name == 'cleanup_small_sym':
+                ascii_map = customized_maps.CLEANUP_SMALL_SYM
+            elif self.args.map_name == 'cleanup_10x10_sym':
+                ascii_map = customized_maps.CLEANUP_10x10_SYM
 
         cleanup_params = ConfigDict()
         cleanup_params.appleRespawnProbability = args.appleRespawnProbability
