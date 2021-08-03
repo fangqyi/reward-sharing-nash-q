@@ -155,4 +155,3 @@ class BasicLatentMAC:
 
         return th.cat([x.reshape(bs, -1) for x in inputs], dim=1)
 
-
