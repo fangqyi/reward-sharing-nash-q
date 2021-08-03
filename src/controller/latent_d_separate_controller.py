@@ -136,7 +136,7 @@ class SeparateLatentMAC:
 
         latent_input_shape, latent_output_shape, latent_hidden_sizes = self._get_latent_shapes()
         self.latent_encoders = [MLPMultiGaussianEncoder(latent_input_shape, latent_output_shape, latent_hidden_sizes)
-                                for _ in self.n_agents]
+                                for _ in range(self.n_agents)]
         self.hidden_states = []
 
     def _build_inputs(self, batch, t):
