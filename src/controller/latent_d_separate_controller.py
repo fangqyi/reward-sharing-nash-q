@@ -156,6 +156,7 @@ class SeparateLatentMAC:
 
         # process observation
         obs = batch["obs"][:, t]
+        print(obs.shape)
 
         if self.args.is_obs_image:
             obs = obs.reshape(bs, self.n_agents, obs.shape[-3], obs.shape[-2], obs.shape[-1])  # flatten the first two dims
