@@ -221,6 +221,7 @@ class MetaQLearner:
         kl_divs = list(kl_divs.split(1, dim=2))
         td_errors = list(td_error.split(1, dim=2))
         for idx in range(self.n_agents):
+            print("agent {}".format(idx))
             kl_divs[idx] = kl_divs[idx].squeeze(2)
             kl_mask = copy.deepcopy(mask).expand_as(kl_divs[idx])
             masked_kl_div = kl_divs[idx] * kl_mask
@@ -232,7 +233,7 @@ class MetaQLearner:
             # Normal L2 loss, take mean over actual data (LSE)
             td_error_loss = (masked_td_error ** 2).sum() / td_mask.sum()
 
-            loss = td_error_loss + kl_div_loss
+            loss = td_error_loss # + kl_div_loss
 
             # Optimise
             self.optimisers[idx].zero_grad()
