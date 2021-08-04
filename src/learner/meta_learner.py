@@ -244,7 +244,7 @@ class MetaQLearner:
 
             # Optimise
             self.optimisers[idx].zero_grad()
-            loss.backward()
+            loss.backward(allow_unreachable=True)
             grad_norm = th.nn.utils.clip_grad_norm_(self.params[idx], self.args.grad_norm_clip)  # max_norm
             self.optimisers[idx].step()
 
