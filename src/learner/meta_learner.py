@@ -80,6 +80,10 @@ class MetaQLearner:
         else:
             self._train(batch, t_env, episode_num)
 
+        if (episode_num - self.last_target_update_episode) / self.args.target_update_interval >= 1.0:
+            self._update_targets()
+            self.last_target_update_episode = episode_num
+
     def _train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
         rewards = batch["redistributed_rewards"][:, :-1]
@@ -151,10 +155,6 @@ class MetaQLearner:
         loss.backward()
         grad_norm = th.nn.utils.clip_grad_norm_(self.params, self.args.grad_norm_clip)  # max_norm
         self.optimiser.step()
-
-        if (episode_num - self.last_target_update_episode) / self.args.target_update_interval >= 1.0:
-            self._update_targets()
-            self.last_target_update_episode = episode_num
 
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
             self.logger.log_stat("loss", loss.item(), t_env)
@@ -247,9 +247,6 @@ class MetaQLearner:
                                  t_env)
             self.log_stats_t = t_env
 
-        if (episode_num - self.last_target_update_episode) / self.args.target_update_interval >= 1.0:
-            self._update_targets()
-            self.last_target_update_episode = episode_num
 
     def _update_targets(self):
         self.target_mac.load_state(self.mac)
