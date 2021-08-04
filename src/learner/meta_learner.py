@@ -170,9 +170,13 @@ class MetaQLearner:
         # Get the relevant quantities
         rewards = batch["redistributed_rewards"][:, :-1, idx]  # [bs, t, n_agents, -1]
         actions = batch["actions"][:, :-1, idx]  # [bs, t, n_agents, -1]
-        terminated = batch["terminated"][:, :-1].float().squeeze(-1)
+        terminated = batch["terminated"][:, :-1].float()
         mask = batch["filled"][:, :-1].float()
-        mask[:, 1:] = mask[:, 1:] * (1 - terminated[:, :-1]).squeeze(-1)
+        print("mask shape")
+        print(mask[:, 1:].shape)
+        print("terminated shape")
+        print(terminated[:, :-1].shape)
+        mask[:, 1:] = mask[:, 1:] * (1 - terminated[:, :-1]).
         avail_actions = batch["avail_actions"][:, :, idx]  # [bs, t, n_agents, -1]
 
         # Calculate estimated Q-Values
