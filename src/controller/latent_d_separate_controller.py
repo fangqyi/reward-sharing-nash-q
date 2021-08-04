@@ -157,9 +157,9 @@ class SeparateLatentMAC:
 
         if self.args.is_obs_image:
             obs = obs.reshape(bs, self.n_agents, obs.shape[-3], obs.shape[-2], obs.shape[-1])  # flatten the first two dims
-            obs = th.split(obs, 1, dim=1)
+            obs = list(th.split(obs, 1, dim=1))
             vec_inputs = th.cat(vec_inputs, dim=-1)
-            vec_inputs = th.split(vec_inputs, 1, dim=1)
+            vec_inputs = list(th.split(vec_inputs, 1, dim=1))
             for _ in range(self.n_agents):
                 obs[_] = obs[_].squeeze(1)
                 vec_inputs[_] = vec_inputs[_].squeeze(1)
