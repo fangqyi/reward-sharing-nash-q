@@ -182,10 +182,14 @@ class MetaQLearner:
 
         kl_divs = []
         for t in range(batch.max_seq_length):
-            agent_outs = self.mac.forward_agent(batch, idx=idx, t=t)  # (bs,n_actions)
+            agent_out = self.mac.forward_agent(batch, idx=idx, t=t)  # (bs,n_actions)
+            print("agent out")
+            print(agent_out.shape)
             kl_div = self.mac.compute_kl_div_agent(idx=idx)
+            print("kl_div")
+            print(kl_div.shape)
             kl_divs.append(kl_div)  # (bs, ))
-            mac_out.append(agent_outs)  # [t,(bs,n_actions)]
+            mac_out.append(agent_out)  # [t,(bs,n_actions)]
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
         kl_divs = th.stack(kl_divs, dim=1)[:, :-1]
         # (bs,t,n,n_actions), Q values of n_actions
