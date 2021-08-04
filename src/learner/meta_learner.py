@@ -180,15 +180,15 @@ class MetaQLearner:
         print("agent {}".format(idx))
         self.mac.init_hidden_agent(batch.batch_size, idx)
         # self.mac.init_latent(batch.batch_size)
+        print("mask shape")
+        print(mask.shape)
+        print("terminated shape")
+        print(terminated.shape)
 
         kl_divs = []
         for t in range(batch.max_seq_length):
             agent_out = self.mac.forward_agent(batch, idx=idx, t=t)  # (bs,n_actions)
-            print("agent out")
-            print(agent_out.shape)
             kl_div = self.mac.compute_kl_div_agent(idx=idx)
-            print("kl_div")
-            print(kl_div.shape)
             kl_divs.append(kl_div)  # (bs, ))
             mac_out.append(agent_out)  # [t,(bs,n_actions)]
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
@@ -216,7 +216,11 @@ class MetaQLearner:
         target_mac_out[avail_actions[:, 1:] == 0] = -9999999  # Q values
 
         target_max_qvals = target_mac_out.max(dim=2)[0]
-
+        print("target_max_qvals shape")
+        print(target_max_qvals.shape)
+        print("rewards shape")
+        print(rewards.shape)
+        
         # Calculate 1-step Q-Learning targets
         targets = rewards + self.args.gamma * (1 - terminated) * target_max_qvals
 
