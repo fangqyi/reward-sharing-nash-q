@@ -201,7 +201,7 @@ class MetaQLearner:
 
         # Calculate the Q-Values necessary for the target
         target_mac_out = []
-        self.target_mac.init_hidden_agent(batch.batch_size, idx=idx)  # (bs,hidden_size)
+        self.target_mac.init_hidden_agent(batch.batch_size, idx)  # (bs,hidden_size)
         # self.target_mac.init_latent(batch.batch_size)
 
         for t in range(batch.max_seq_length):
