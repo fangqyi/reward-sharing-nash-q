@@ -53,6 +53,11 @@ class SeparateLatentMAC:
         divs = th.stack(divs, dim=1)
         return divs
 
+    def compute_kl_div_agent(self, idx):
+        div = self.latent_encoders[idx].compute_kl_div()
+        self.latent_encoders[idx].reset()
+        return div
+
     def forward(self, ep_batch, t, test_mode=False):
         agent_inputs = self._build_inputs(ep_batch, t)
         if self.args.is_obs_image:
@@ -97,9 +102,30 @@ class SeparateLatentMAC:
 
         return agent_outs.view(ep_batch.batch_size, self.n_agents, -1)
 
+    def forward_agent(self, ep_batch, t, idx, test_mode=False):
+        agent_inputs = self._build_inputs(ep_batch, t)
+        if self.args.is_obs_image:
+            obs_inputs, vec_inputs = agent_inputs
+        avail_actions = ep_batch["avail_actions"][:, t, idx]
+        mask = ep_batch["adjacent_agents"][:, t, idx]
+
+        if self.args.is_obs_image:
+            agent_input = [obs_inputs[idx], vec_inputs[idx]]
+        else:
+            agent_input = agent_inputs[idx]
+        if self.args.agent == "dgn_agent":
+            agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, mask, self.hidden_states[idx])
+        else:
+            agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, self.hidden_states[idx])
+        agent_out = agent_out.reshape(ep_batch.batch_size, -1)
+
     def init_hidden(self, batch_size):
         if 'init_hidden' in dir(self.agents[0]):
             self.hidden_states = [self.agents[idx].init_hidden().expand(batch_size, -1) for idx in range(self.n_agents)]
+
+    def init_hidden_agent(self, idx, batch_size):
+        if 'init_hidden' in dir(self.agents[0]):
+            self.hidden_states[idx] = self.agents[idx].init_hidden().expand(batch_size, -1)
 
     def parameters(self):
         params = []
