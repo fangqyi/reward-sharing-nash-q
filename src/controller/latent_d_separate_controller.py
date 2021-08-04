@@ -68,8 +68,6 @@ class SeparateLatentMAC:
             if self.args.agent == "dgn_agent":
                 agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, mask, self.hidden_states[idx])
             else:
-                print(agent_input[0].shape)
-                print(agent_input[1].shape)
                 agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, self.hidden_states[idx])
             agent_outs.append(agent_out)
         agent_outs = th.stack(agent_outs, dim=1).reshape(ep_batch.batch_size*self.n_agents, -1)
@@ -156,26 +154,22 @@ class SeparateLatentMAC:
 
         # process observation
         obs = batch["obs"][:, t]
-        print(obs.shape)
 
         if self.args.is_obs_image:
             obs = obs.reshape(bs, self.n_agents, obs.shape[-3], obs.shape[-2], obs.shape[-1])  # flatten the first two dims
-            print(obs.shape)
             obs = th.split(obs, 1, dim=1)
-            print(obs[0].shape)
             vec_inputs = th.cat(vec_inputs, dim=-1)
             vec_inputs = th.split(vec_inputs, 1, dim=1)
             for _ in range(self.n_agents):
-                obs[_].squeeze(1)
-                vec_inputs[_].squeeze(1)
-            print(obs[0].shape)
+                obs[_] = obs[_].squeeze(1)
+                vec_inputs[_] = vec_inputs[_].squeeze(1)
             inputs = (obs, vec_inputs)  # return two objects as nn inputs
         else:
             inputs.append(obs)
             inputs.extend(vec_inputs)
             inputs = th.cat(inputs, dim=-1).split(1, dim=1)
             for _ in range(self.n_agents):
-                inputs[_].squeeze(1)  # return one, catting obs and other agent info together
+                inputs[_] = inputs[_].squeeze(1)  # return one, catting obs and other agent info together
         return inputs
 
     def _get_latent_shapes(self):
