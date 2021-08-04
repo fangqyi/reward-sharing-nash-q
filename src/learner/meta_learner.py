@@ -224,6 +224,10 @@ class MetaQLearner:
         for idx in range(self.n_agents):
             kl_divs[idx] = kl_divs[idx].squeeze(2)
             td_errors[idx] = td_errors[idx].squeeze(2)
+            print("mask shape")
+            print(mask)
+            print("kl_divs")
+            print(kl_divs[idx].shape)
             kl_mask = copy.deepcopy(mask).expand_as(kl_divs[idx])
             masked_kl_div = kl_divs * kl_mask
             kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
