@@ -216,10 +216,14 @@ class MetaQLearner:
         # Td-error
         td_error = (chosen_action_qvals - targets.detach())  # no gradient through target net
         # (bs,t,1)
+        print("td_error shape")
+        print(td_error.shape)
 
-        kl_divs = kl_divs.split(1, dim=2)
-        td_errors = td_error.split(1, dim=2)
+        kl_divs = list(kl_divs.split(1, dim=2))
+        td_errors = list(td_error.split(1, dim=2))
         for idx in range(self.n_agents):
+            kl_divs[idx] = kl_divs[idx].squeeze(2)
+            td_errors[idx] = td_errors[idx].squeeze(2)
             kl_mask = copy.deepcopy(mask).expand_as(kl_divs[idx])
             masked_kl_div = kl_divs * kl_mask
             kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
