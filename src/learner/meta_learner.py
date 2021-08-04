@@ -229,7 +229,7 @@ class MetaQLearner:
         targets = rewards + self.args.gamma * (1 - terminated).squeeze(-1) * target_max_qvals
 
         # Td-error
-        td_error = (chosen_action_qvals - targets.detach())  # no gradient through target net
+        td_error = (chosen_action_qvals - targets.detach()).unsqueeze(-1)  # no gradient through target net
         # (bs,t,1)
 
         print("agent {}".format(idx))
@@ -237,7 +237,7 @@ class MetaQLearner:
         masked_kl_div = kl_divs * kl_mask
         kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
 
-        td_mask = copy.deepcopy(mask).expand_as(td_error.unsqueeze(-1))
+        td_mask = copy.deepcopy(mask).expand_as(td_error)
         # 0-out the targets that came from padded data
         masked_td_error = td_error * td_mask
         # Normal L2 loss, take mean over actual data (LSE)
