@@ -237,7 +237,11 @@ class MetaQLearner:
             masked_kl_div = kl_divs[idx] * kl_mask
             kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
 
-            mask = mask.expand_as(td_errors[idx])
+            print("mask shape")
+            print(mask)
+            print("td_errors[idx] shape")
+            print(td_errors[idx].shape)
+            mask = copy.deepcopy(mask).expand_as(td_errors[idx])
             # 0-out the targets that came from padded data
             masked_td_error = td_errors[idx] * mask
             # Normal L2 loss, take mean over actual data (LSE)
