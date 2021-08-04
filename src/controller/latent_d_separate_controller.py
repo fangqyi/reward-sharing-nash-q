@@ -68,8 +68,6 @@ class SeparateLatentMAC:
             if self.args.agent == "dgn_agent":
                 agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, mask, self.hidden_states[idx])
             else:
-                print(agent_input[0].shape)
-                print(agent_input[1].shape)
                 agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, self.hidden_states[idx])
             agent_outs.append(agent_out)
         agent_outs = th.stack(agent_outs, dim=1).reshape(ep_batch.batch_size*self.n_agents, -1)
