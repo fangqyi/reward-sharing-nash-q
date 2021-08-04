@@ -48,6 +48,7 @@ agent: "rnn_agent_image_vec"
 
 # centralized critic and altruistic agents
 centralized_social_welfare: False
+separate_agents: False
 
 load_pretrained_model: False
 
