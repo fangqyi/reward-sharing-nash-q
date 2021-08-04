@@ -257,9 +257,6 @@ class MetaQLearner:
             mask_elems = td_mask.sum().item()
             self.logger.log_stat("agent{}_kl_div_abs".format(idx), kl_div_loss.abs().item(), t_env)
             self.logger.log_stat("agent{}_td_error_abs".format(idx), (masked_td_error.abs().sum().item() / mask_elems), t_env)
-            self.logger.log_stat("agent{}_q_taken_mean".format(idx),
-                                (chosen_action_qvals * td_mask).sum().item() / (mask_elems),
-                                t_env)
             self.logger.log_stat("agent{}_target_mean".format(idx), (targets.unsqueeze(-1) * td_mask).sum().item() / (mask_elems ),
                                  t_env)
             self.log_stats_t = t_env
