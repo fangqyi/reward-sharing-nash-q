@@ -106,7 +106,6 @@ class SeparateLatentMAC:
         agent_inputs = self._build_inputs(ep_batch, t)
         if self.args.is_obs_image:
             obs_inputs, vec_inputs = agent_inputs
-        avail_actions = ep_batch["avail_actions"][:, t, idx]
         mask = ep_batch["adjacent_agents"][:, t, idx]
 
         if self.args.is_obs_image:
@@ -118,6 +117,7 @@ class SeparateLatentMAC:
         else:
             agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, self.hidden_states[idx])
         agent_out = agent_out.reshape(ep_batch.batch_size, -1)
+        return agent_out
 
     def init_hidden(self, batch_size):
         if 'init_hidden' in dir(self.agents[0]):
