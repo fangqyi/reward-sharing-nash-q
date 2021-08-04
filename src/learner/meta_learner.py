@@ -177,6 +177,7 @@ class MetaQLearner:
 
         # Calculate estimated Q-Values
         mac_out = []
+        print("agent {}".format(idx))
         self.mac.init_hidden_agent(batch.batch_size, idx)
         # self.mac.init_latent(batch.batch_size)
 
