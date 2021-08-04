@@ -51,8 +51,6 @@ class SeparateLatentMAC:
             divs.append(self.latent_encoders[idx].compute_kl_div())
             self.latent_encoders[idx].reset()
         divs = th.stack(divs, dim=1)
-        print("divs in controller")
-        print(divs.shape)
         return divs
 
     def forward(self, ep_batch, t, test_mode=False):
