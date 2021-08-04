@@ -8,7 +8,7 @@ from torch.optim import Adam
 
 from module.critics.dist_critic import CentralizedDistCritic, DecentralizedDistCritic
 
-torch.autograd.set_detect_anomaly(True)
+
 class MetaQLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = args
