@@ -172,22 +172,13 @@ class MetaQLearner:
         actions = batch["actions"][:, :-1, idx]  # [bs, t, n_agents, -1]
         terminated = batch["terminated"][:, :-1].float()
         mask = batch["filled"][:, :-1].float()
-        print("mask shape")
-        print(mask[:, 1:].shape)
-        print("terminated shape")
-        print(terminated[:, :-1].shape)
         mask[:, 1:] = mask[:, 1:] * (1 - terminated[:, :-1])
         avail_actions = batch["avail_actions"][:, :, idx]  # [bs, t, n_agents, -1]
 
         # Calculate estimated Q-Values
         mac_out = []
-        print("agent {}".format(idx))
         self.mac.init_hidden_agent(batch.batch_size, idx)
         # self.mac.init_latent(batch.batch_size)
-        print("mask shape")
-        print(mask.shape)
-        print("terminated shape")
-        print(terminated.shape)
 
         kl_divs = []
         for t in range(batch.max_seq_length):
@@ -220,10 +211,6 @@ class MetaQLearner:
         target_mac_out[avail_actions[:, 1:] == 0] = -9999999  # Q values
 
         target_max_qvals = target_mac_out.max(dim=2)[0]
-        print("target_max_qvals shape")
-        print(target_max_qvals.shape)
-        print("rewards shape")
-        print(rewards.shape)
 
         # Calculate 1-step Q-Learning targets
         targets = rewards + self.args.gamma * (1 - terminated).squeeze(-1) * target_max_qvals
@@ -232,7 +219,6 @@ class MetaQLearner:
         td_error = (chosen_action_qvals - targets.detach()).unsqueeze(-1)  # no gradient through target net
         # (bs,t,1)
 
-        print("agent {}".format(idx))
         kl_mask = copy.deepcopy(mask).expand_as(kl_divs)
         masked_kl_div = kl_divs * kl_mask
         kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
