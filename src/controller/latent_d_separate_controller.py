@@ -50,7 +50,10 @@ class SeparateLatentMAC:
         for idx in range(self.n_agents):
             divs.append(self.latent_encoders[idx].compute_kl_div())
             self.latent_encoders[idx].reset()
-        return th.stack(divs, dim=0)
+        divs = th.stack(divs, dim=1)
+        print("divs in controller")
+        print(divs.shape)
+        return divs
 
     def forward(self, ep_batch, t, test_mode=False):
         agent_inputs = self._build_inputs(ep_batch, t)
