@@ -229,7 +229,7 @@ class MetaQLearner:
                     td_errors_cl[idx_].detach()
 
             print("agent {}".format(idx))
-            kl_divs_cl[idx] = kl_divs[idx].squeeze(2)
+            kl_divs_cl[idx] = kl_divs_cl[idx].squeeze(2)
             kl_mask = copy.deepcopy(mask).expand_as(kl_divs_cl[idx])
             masked_kl_div = kl_divs_cl[idx] * kl_mask
             kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
