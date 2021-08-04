@@ -132,7 +132,7 @@ class SeparateLatentMAC:
     def _build_agents(self):
         self.agent_output_type = self.args.agent_output_type
         self.agents = [agent_REGISTRY[self.args.agent](self.args, self.scheme) for _ in range(self.n_agents)]
-        self.action_selectors = EpsilonGreedyActionSelector(self.args, self.train_phase)
+        self.action_selector = EpsilonGreedyActionSelector(self.args, self.train_phase)
 
         latent_input_shape, latent_output_shape, latent_hidden_sizes = self._get_latent_shapes()
         self.latent_encoders = [MLPMultiGaussianEncoder(latent_input_shape, latent_output_shape, latent_hidden_sizes)
