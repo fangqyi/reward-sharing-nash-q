@@ -221,6 +221,9 @@ class MetaQLearner:
         # kl_divs_cl = list(kl_divs.clone().split(1, dim=2))
         # td_errors_cl = list(td_error.clone().split(1, dim=2))
         for idx in range(self.n_agents):
+            print(self.params[idx])
+            
+        for idx in range(self.n_agents):
             kl_divs_cl = list(kl_divs.clone().split(1, dim=2))
             td_errors_cl = list(td_error.clone().split(1, dim=2))
             for idx_ in range(self.n_agents):
