@@ -123,7 +123,7 @@ class SeparateLatentMAC:
         if 'init_hidden' in dir(self.agents[0]):
             self.hidden_states = [self.agents[idx].init_hidden().expand(batch_size, -1) for idx in range(self.n_agents)]
 
-    def init_hidden_agent(self, idx, batch_size):
+    def init_hidden_agent(self, batch_size, idx):
         if 'init_hidden' in dir(self.agents[0]):
             self.hidden_states[idx] = self.agents[idx].init_hidden().expand(batch_size, -1)
 
