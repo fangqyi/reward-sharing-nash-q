@@ -233,7 +233,7 @@ class MetaQLearner:
             # Normal L2 loss, take mean over actual data (LSE)
             td_error_loss = (masked_td_error ** 2).sum() / td_mask.sum()
 
-            loss = td_error_loss # + kl_div_loss
+            loss = kl_div_loss # td_error_loss # + kl_div_loss
 
             # Optimise
             self.optimisers[idx].zero_grad()
