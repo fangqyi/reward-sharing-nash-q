@@ -218,20 +218,27 @@ class MetaQLearner:
         td_error = (chosen_action_qvals - targets.detach())  # no gradient through target net
         # (bs,t,1)
 
-        kl_divs = list(kl_divs.split(1, dim=2))
-        td_errors = list(td_error.split(1, dim=2))
+        # kl_divs_cl = list(kl_divs.clone().split(1, dim=2))
+        # td_errors_cl = list(td_error.clone().split(1, dim=2))
         for idx in range(self.n_agents):
-            print("agent {}".format(idx))
-            kl_divs[idx] = kl_divs[idx].squeeze(2)
-            kl_mask = copy.deepcopy(mask).expand_as(kl_divs[idx])
-            masked_kl_div = kl_divs[idx] # * kl_mask
-            kl_div_loss = masked_kl_div.sum() # / kl_mask.sum()
+            kl_divs_cl = list(kl_divs.clone().split(1, dim=2))
+            td_errors_cl = list(td_error.clone().split(1, dim=2))
+            for idx_ in range(self.n_agents):
+                if idx != idx_:
+                    kl_divs_cl[idx_].detach()
+                    td_errors_cl[idx_].detach()
 
-            td_mask = copy.deepcopy(mask).expand_as(td_errors[idx])
+            print("agent {}".format(idx))
+            kl_divs_cl[idx] = kl_divs[idx].squeeze(2)
+            kl_mask = copy.deepcopy(mask).expand_as(kl_divs_cl[idx])
+            masked_kl_div = kl_divs_cl[idx] * kl_mask
+            kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
+
+            td_mask = copy.deepcopy(mask).expand_as(td_errors_cl[idx])
             # 0-out the targets that came from padded data
-            masked_td_error = td_errors[idx] # * td_mask
+            masked_td_error = td_errors_cl[idx] * td_mask
             # Normal L2 loss, take mean over actual data (LSE)
-            td_error_loss = (masked_td_error ** 2).sum() # / td_mask.sum()
+            td_error_loss = (masked_td_error ** 2).sum() / td_mask.sum()
 
             loss = td_error_loss + kl_div_loss
 
