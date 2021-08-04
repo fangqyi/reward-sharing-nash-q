@@ -238,7 +238,7 @@ class MetaQLearner:
             kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
 
             print("mask shape")
-            print(mask)
+            print(mask.shape)
             print("td_errors[idx] shape")
             print(td_errors[idx].shape)
             mask = copy.deepcopy(mask).expand_as(td_errors[idx])
