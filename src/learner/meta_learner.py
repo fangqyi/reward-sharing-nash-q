@@ -252,15 +252,15 @@ class MetaQLearner:
         self.optimisers[idx].step()
 
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
-            self.logger.log_stat("loss_{}".format(idx), loss.item(), t_env)
-            self.logger.log_stat("policy_grad_norm_{}".format(idx), grad_norm, t_env)
-            mask_elems = mask.sum().item()
-            self.logger.log_stat("kl_div_abs_{}".format(idx), kl_div_loss.abs().item(), t_env)
-            self.logger.log_stat("td_error_abs_{}".format(idx), (masked_td_error.abs().sum().item() / mask_elems), t_env)
-            self.logger.log_stat("q_taken_mean_{}".format(idx),
-                                (chosen_action_qvals * mask).sum().item() / (mask_elems * self.args.n_agents),
+            self.logger.log_stat("agent{}_loss".format(idx), loss.item(), t_env)
+            self.logger.log_stat("agent{}_policy_grad_norm".format(idx), grad_norm, t_env)
+            mask_elems = td_mask.sum().item()
+            self.logger.log_stat("agent{}_kl_div_abs".format(idx), kl_div_loss.abs().item(), t_env)
+            self.logger.log_stat("agent{}_td_error_abs".format(idx), (masked_td_error.abs().sum().item() / mask_elems), t_env)
+            self.logger.log_stat("agent{}_q_taken_mean".format(idx),
+                                (chosen_action_qvals * td_mask).sum().item() / (mask_elems),
                                 t_env)
-            self.logger.log_stat("target_mean_{}".format(idx), (targets * mask).sum().item() / (mask_elems * self.args.n_agents),
+            self.logger.log_stat("agent{}_target_mean".format(idx), (targets.unsqueeze(-1) * td_mask).sum().item() / (mask_elems ),
                                  t_env)
             self.log_stats_t = t_env
 
