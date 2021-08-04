@@ -183,14 +183,10 @@ class MetaQLearner:
         for t in range(batch.max_seq_length):
             agent_outs = self.mac.forward(batch, t=t)  # (bs,n,n_actions)
             kl_div = self.mac.compute_kl_div()
-            # print("kl_div shape")
-            # print(kl_div.shape)
             kl_divs.append(kl_div)  # (bs,n, ))
             mac_out.append(agent_outs)  # [t,(bs,n,n_actions)]
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
         kl_divs = th.stack(kl_divs, dim=1)[:, :-1]
-        # print("kl_divs")
-        # print(kl_divs.shape)
         # (bs,t,n,n_actions), Q values of n_actions
 
         # Pick the Q-Values for the actions taken by each agent
@@ -221,26 +217,15 @@ class MetaQLearner:
         # Td-error
         td_error = (chosen_action_qvals - targets.detach())  # no gradient through target net
         # (bs,t,1)
-        # print("td_error shape")
-        # print(td_error.shape)
 
         kl_divs = list(kl_divs.split(1, dim=2))
         td_errors = list(td_error.split(1, dim=2))
         for idx in range(self.n_agents):
             kl_divs[idx] = kl_divs[idx].squeeze(2)
-            td_errors[idx] = td_errors[idx].squeeze(2)
-            # print("mask shape")
-            # print(mask.shape)
-            # print("kl_divs")
-            # print(kl_divs[idx].shape)
             kl_mask = copy.deepcopy(mask).expand_as(kl_divs[idx])
             masked_kl_div = kl_divs[idx] * kl_mask
             kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
 
-            print("mask shape")
-            print(mask.shape)
-            print("td_errors[idx] shape")
-            print(td_errors[idx].shape)
             mask = copy.deepcopy(mask).expand_as(td_errors[idx])
             # 0-out the targets that came from padded data
             masked_td_error = td_errors[idx] * mask
