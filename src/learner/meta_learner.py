@@ -176,7 +176,7 @@ class MetaQLearner:
         print(mask[:, 1:].shape)
         print("terminated shape")
         print(terminated[:, :-1].shape)
-        mask[:, 1:] = mask[:, 1:] * (1 - terminated[:, :-1]).
+        mask[:, 1:] = mask[:, 1:] * (1 - terminated[:, :-1])
         avail_actions = batch["avail_actions"][:, :, idx]  # [bs, t, n_agents, -1]
 
         # Calculate estimated Q-Values
