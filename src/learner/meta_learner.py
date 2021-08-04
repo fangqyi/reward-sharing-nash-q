@@ -227,7 +227,7 @@ class MetaQLearner:
 
         # Calculate 1-step Q-Learning targets
         targets = rewards + self.args.gamma * (1 - terminated).squeeze(-1) * target_max_qvals
-        mask = mask.squeeze(-1)
+
         # Td-error
         td_error = (chosen_action_qvals - targets.detach())  # no gradient through target net
         # (bs,t,1)
