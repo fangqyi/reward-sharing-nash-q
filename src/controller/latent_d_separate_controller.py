@@ -104,10 +104,7 @@ class SeparateLatentMAC:
     def parameters(self):
         params = []
         for idx in range(self.n_agents):
-            param = []
-            param.extend(list(self.agents[idx].parameters()))
-            param.extend(list(self.latent_encoders[idx].parameters()))
-            params.append(param)
+            params.append(list(self.agents[idx].parameters()) + list(self.latent_encoders[idx].parameters()))
         return params
 
     def load_state(self, other_mac):
