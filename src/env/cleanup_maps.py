@@ -29,3 +29,13 @@ CLEANUP_SMALL_SYM = [
     '@B   B@',
     '@BP  B@',
     '@@@@@@@']
+
+# 7x7 map: Agent 0 on river side, Agent 1 on apple side
+CLEANUP_SMALL_SYM_TEST = [
+    '@@@@@@@',
+    '@H  PB@',
+    '@B   B@',
+    '@H   H@',
+    '@B   B@',
+    '@BP  H@',
+    '@@@@@@@']

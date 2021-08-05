@@ -15,7 +15,7 @@ disable_rotation_action: True
 # Else, observe the full 1-hot action of other agent
 obs_cleaned_1hot: True
 map_source: 'customized'
-map_name: 'cleanup_small_sym'
+map_name: 'cleanup_small_sym_test'  # 'cleanup_small_sym'
 shuffle_spawn: False
 view_size: 4 # 7
 random_orientation: False

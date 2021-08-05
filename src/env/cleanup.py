@@ -59,6 +59,8 @@ class Cleanup(MultiAgentEnv):
                 ascii_map = customized_maps.CLEANUP_SMALL_SYM
             elif self.args.map_name == 'cleanup_10x10_sym':
                 ascii_map = customized_maps.CLEANUP_10x10_SYM
+            elif self.args.map_name == 'cleanup_small_sym_test':
+                ascii_map = customized_maps.CLEANUP_SMALL_SYM_TEST
 
         cleanup_params = ConfigDict()
         cleanup_params.appleRespawnProbability = args.appleRespawnProbability
