@@ -35,7 +35,7 @@ CLEANUP_SMALL_SYM_TEST = [
     '@@@@@@@',
     '@H  PB@',
     '@B   B@',
-    '@H   H@',
+    '@B   B@',
     '@B   B@',
     '@BP  H@',
     '@@@@@@@']
