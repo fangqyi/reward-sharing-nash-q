@@ -1,0 +1,61 @@
+critic_hidden_sizes: [64, 64]
+learner: "meta_learner"
+runner: "dist_episode"
+mac: "separate_dist"
+total_z_training_steps: 50000
+env_steps_every_z: 10000
+z_sample_runs: 10
+
+pretrain_epsilon_start: 1.0
+pretrain_epsilon_finish: 0.05
+pretrain_epsilon_anneal_time: 1000000
+
+train_epsilon_start: 1.0
+train_epsilon_finish: 0.05
+train_epsilon_anneal_time: 5000
+
+buffer_size: 10000
+
+#
+meta_t_max:
+meta_type: "distance_latent"
+latent_relation_space_dim: 1
+latent_relation_space_upper_bound: 10.0
+latent_relation_space_lower_bound: 0.0
+latent_var_dim: 2
+latent_encoder_hidden_sizes: [32, 32]
+pretrained_task_num: 32
+total_pretrain_steps: 1500000
+z_critic_lr: 0.001
+z_update_lr: 0.05
+
+# update the target network every {} episodes
+target_update_interval: 30
+
+# use the Q_Learner to train
+agent_output_type: "q"
+
+is_obs_image: True  # true for cleanup env
+
+# conv params
+kernel_size: 3
+stride: 1
+conv_out_dim: 8
+rnn_hidden_dim: 128
+name: "dist_meta_learning_cleanup_decentralized"
+
+agent: "rnn_agent_image_vec"
+
+# centralized critic and altruistic agents
+centralized_social_welfare: False
+separate_agents: True
+obs_agent_id: False
+
+load_pretrained_model: False
+
+# debug: test if deterministic sharing schemes improve performance
+deterministic_pretrained_tasks: True
+div_num: 2
+
+# debug: hardcoded pretraining sharing schemes
+hardcoded_pretrained_tasks: False
