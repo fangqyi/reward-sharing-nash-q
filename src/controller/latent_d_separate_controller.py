@@ -202,7 +202,7 @@ class SeparateLatentMAC:
         latent_input_shape, latent_output_shape, latent_hidden_sizes = self._get_latent_shapes()
         self.latent_encoders = [MLPMultiGaussianEncoder(latent_input_shape, latent_output_shape, latent_hidden_sizes)
                                 for _ in range(self.n_agents)]
-        if self.args.mutual_infomation_reinforcement:
+        if self.args.mutual_information_reinforcement:
             self.inference_nets = [
                 MLPMultiGaussianEncoder(self.agents[0].get_processed_output_shape(), latent_output_shape,
                                         latent_hidden_sizes)]
