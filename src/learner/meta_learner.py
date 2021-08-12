@@ -189,9 +189,9 @@ class MetaQLearner:
             if self.args.mutual_information_reinforcement:
                 kl_div, ce_loss = kl_div
                 ce_losses.append(ce_loss)
-                print(kl_div.shape)
             kl_divs.append(kl_div)  # (bs, ))
             mac_out.append(agent_out)  # [t,(bs,n_actions)]
+        print(kl_divs[0].shape)
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
         kl_divs = th.stack(kl_divs, dim=1)[:, :-1]
         ce_losses = th.stack(ce_losses, dim=1)[:, :-1]
