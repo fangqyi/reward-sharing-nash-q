@@ -51,7 +51,7 @@ centralized_social_welfare: False
 separate_agents: True
 obs_agent_id: False
 
-mutual_information_reinforcement: False
+mutual_information_reinforcement: True
 
 load_pretrained_model: False
 
@@ -61,5 +61,5 @@ div_num: 2
 
 # debug: hardcoded pretraining sharing schemes
 hardcoded_pretrained_tasks: True
-hardcoded_tasks_zp: [[0,10]]
-hardcoded_tasks_zq: [[0,10]]
+hardcoded_tasks_zp: [[0,10], [0,0]]
+hardcoded_tasks_zq: [[0,10], [0,0]]
