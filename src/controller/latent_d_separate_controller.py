@@ -208,7 +208,7 @@ class SeparateLatentMAC:
         if self.args.mutual_information_reinforcement:
             self.inference_nets = [
                 MLPMultiGaussianEncoder(self.agents[0].get_processed_output_shape(), latent_output_shape,
-                                        latent_hidden_sizes)]
+                                        latent_hidden_sizes) for _ in range(self.n_agents)]
         self.hidden_states = []
         self.inference_inputs = []
 
