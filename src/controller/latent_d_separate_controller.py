@@ -1,8 +1,8 @@
 import torch as th
+from torch.distributions import kl_divergence
 
 from components.action_selectors import EpsilonGreedyActionSelector
 from module.agents import REGISTRY as agent_REGISTRY
-
 
 # This multi-agent controller shares parameters between agents
 from module.utils import MLPMultiGaussianEncoder
@@ -23,7 +23,8 @@ class SeparateLatentMAC:
         # Only select actions for the selected batch elements in bs
         avail_actions = ep_batch["avail_actions"][:, t_ep]
         agent_outputs = self.forward(ep_batch, t_ep, test_mode=test_mode)
-        chosen_actions = self.action_selector.select_action(agent_outputs[bs], avail_actions[bs], t_env, test_mode=test_mode)
+        chosen_actions = self.action_selector.select_action(agent_outputs[bs], avail_actions[bs], t_env,
+                                                            test_mode=test_mode)
         return chosen_actions.tolist()
 
     def sample_batch_latent_var(self, batch, t=None):
@@ -54,9 +55,18 @@ class SeparateLatentMAC:
         return divs
 
     def compute_kl_div_agent(self, idx):
-        div = self.latent_encoders[idx].compute_kl_div()
+        enc_div = self.latent_encoders[idx].compute_kl_div() * self.args.encoder_kl_div_weight
+        if self.args.mutual_information_reinforcement:
+            enc_d = self.latent_encoders[idx].get_distribution()
+            inf_d = self.inference_nets[idx].get_distribution()
+            ce = enc_d.entropy().sum(dim=-1).mean() * self.args.encoder_h_weight + kl_divergence(enc_d, inf_d).sum(dim=-1).mean()*self.args.ce_kl_weight
+            ce = th.clamp(ce, max=2e3)
+            ce = th.log(1 + th.exp(ce))
+            self.inference_nets[idx].reset()
+            self.latent_encoders[idx].reset()
+            return enc_div, ce
         self.latent_encoders[idx].reset()
-        return div
+        return enc_div
 
     def forward(self, ep_batch, t, test_mode=False):
         agent_inputs = self._build_inputs(ep_batch, t)
@@ -72,11 +82,15 @@ class SeparateLatentMAC:
             else:
                 agent_input = agent_inputs[idx]
             if self.args.agent == "dgn_agent":
-                agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, mask, self.hidden_states[idx])
+                outputs = self.agents[idx](agent_input, mask, self.hidden_states[idx])
             else:
-                agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, self.hidden_states[idx])
+                outputs = self.agents[idx](agent_input, self.hidden_states[idx])
+            if self.args.mutual_information_reinforcement:
+                agent_out, self.hidden_states[idx], self.inference_inputs[idx] = outputs
+            else:
+                agent_out, self.hidden_states[idx] = outputs
             agent_outs.append(agent_out)
-        agent_outs = th.stack(agent_outs, dim=1).reshape(ep_batch.batch_size*self.n_agents, -1)
+        agent_outs = th.stack(agent_outs, dim=1).reshape(ep_batch.batch_size * self.n_agents, -1)
 
         # Softmax the agent outputs if they're policy logits
         if self.agent_output_type == "pi_logits":  # (0, 1) -> (-inf, inf)
@@ -94,7 +108,7 @@ class SeparateLatentMAC:
                     epsilon_action_num = reshaped_avail_actions.sum(dim=1, keepdim=True).float()
 
                 agent_outs = ((1 - self.action_selector.epsilon) * agent_outs
-                               + th.ones_like(agent_outs) * self.action_selector.epsilon/epsilon_action_num)
+                              + th.ones_like(agent_outs) * self.action_selector.epsilon / epsilon_action_num)
 
                 if getattr(self.args, "mask_before_softmax", True):
                     # Zero out the unavailable actions
@@ -119,9 +133,15 @@ class SeparateLatentMAC:
         agent_out = agent_out.reshape(ep_batch.batch_size, -1)
         return agent_out
 
+    def forward_inference_net_agent(self, idx):
+        self.inference_nets[idx](self._build_inference_inputs_agent(idx))
+        return self.inference_nets[idx].get_distribution()
+
     def init_hidden(self, batch_size):
         if 'init_hidden' in dir(self.agents[0]):
             self.hidden_states = [self.agents[idx].init_hidden().expand(batch_size, -1) for idx in range(self.n_agents)]
+        if self.args.mutual_information_reinforcement:
+            self.inference_inputs = [None] * self.n_agents
 
     def init_hidden_agent(self, batch_size, idx):
         if 'init_hidden' in dir(self.agents[0]):
@@ -129,32 +149,50 @@ class SeparateLatentMAC:
                 self.hidden_states.append(self.agents[idx].init_hidden().expand(batch_size, -1))
             else:
                 self.hidden_states[idx] = self.agents[idx].init_hidden().expand(batch_size, -1)
+        if self.args.mutual_information_reinforcement:
+            if len(self.inference_inputs) != self.n_agents:
+                self.inference_inputs.append(None)
+            else:
+                self.inference_inputs[idx] = None
 
     def parameters(self):
         params = []
         for idx in range(self.n_agents):
             params.append(list(self.agents[idx].parameters()) + list(self.latent_encoders[idx].parameters()))
+            if self.args.mutual_information_reinforcement:
+                params.append(list(self.inference_nets[idx].parameters()))
         return params
 
     def load_state(self, other_mac):
         for idx in range(self.n_agents):
             self.agents[idx].load_state_dict(other_mac.agents[idx].state_dict())
             self.latent_encoders[idx].load_state_dict(other_mac.latent_encoders[idx].state_dict())
+            if self.args.mutual_information_reinforcement:
+                self.inference_nets[idx].load_state_dict(other_mac.inference_nets[idx].state_dict())
 
     def cuda(self):
         for idx in range(self.n_agents):
             self.agents[idx].cuda()
             self.latent_encoders[idx].cuda()
+            if self.args.mutual_information_reinforcement:
+                self.inference_nets[idx].cuda()
 
     def save_models(self, path):
         for idx in range(self.n_agents):
             th.save(self.agents[idx].state_dict(), "{}/agent{}.th".format(path, idx))
             th.save(self.latent_encoders[idx].state_dict(), "{}/encoder{}.th".format(path, idx))
+            if self.args.mutual_information_reinforcement:
+                th.save(self.inference_nets[idx].state_dict(), "{}/inference_net{}.th".format(path, idx))
 
     def load_models(self, path):
         for idx in range(self.n_agents):
-            self.agents[idx].load_state_dict(th.load("{}/agent{}.th".format(path, idx), map_location=lambda storage, loc: storage))
-            self.latent_encoders[idx].load_state_dict(th.load("{}/encoder{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+            self.agents[idx].load_state_dict(
+                th.load("{}/agent{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+            self.latent_encoders[idx].load_state_dict(
+                th.load("{}/encoder{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+            if self.args.mutual_information_reinforcement:
+                self.inference_nets[idx].load_state_dict(
+                    th.load("{}/inference_net{}.th".format(path, idx), map_location=lambda storage, loc: storage))
 
     def _build_agents(self):
         self.agent_output_type = self.args.agent_output_type
@@ -164,7 +202,12 @@ class SeparateLatentMAC:
         latent_input_shape, latent_output_shape, latent_hidden_sizes = self._get_latent_shapes()
         self.latent_encoders = [MLPMultiGaussianEncoder(latent_input_shape, latent_output_shape, latent_hidden_sizes)
                                 for _ in range(self.n_agents)]
+        if self.args.mutual_infomation_reinforcement:
+            self.inference_nets = [
+                MLPMultiGaussianEncoder(self.agents[0].get_processed_output_shape(), latent_output_shape,
+                                        latent_hidden_sizes)]
         self.hidden_states = []
+        self.inference_inputs = []
 
     def _build_inputs(self, batch, t):
         # Assumes homogenous agents with flat observations.
@@ -176,14 +219,15 @@ class SeparateLatentMAC:
             if t == 0:
                 vec_inputs.append(th.zeros_like(batch["actions_onehot"][:, t]))
             else:
-                vec_inputs.append(batch["actions_onehot"][:, t-1])
+                vec_inputs.append(batch["actions_onehot"][:, t - 1])
         vec_inputs.append(self.sample_batch_latent_var(batch, t))
 
         # process observation
         obs = batch["obs"][:, t]
 
         if self.args.is_obs_image:
-            obs = obs.reshape(bs, self.n_agents, obs.shape[-3], obs.shape[-2], obs.shape[-1])  # flatten the first two dims
+            obs = obs.reshape(bs, self.n_agents, obs.shape[-3], obs.shape[-2],
+                              obs.shape[-1])  # flatten the first two dims
             obs = list(th.split(obs, 1, dim=1))
             vec_inputs = th.cat(vec_inputs, dim=-1)
             vec_inputs = list(th.split(vec_inputs, 1, dim=1))
@@ -199,12 +243,16 @@ class SeparateLatentMAC:
                 inputs[_] = inputs[_].squeeze(1)  # return one, catting obs and other agent info together
         return inputs
 
+    def _build_inference_inputs(self):
+        return [th.cat(h.detach(), i.detach()) for h, i in zip(self.hidden_states, self.inference_inputs)]
+
+    def _build_inference_inputs_agent(self, idx: int):
+        return th.cat(self.hidden_states[idx], self.inference_inputs[idx])
+
     def _get_latent_shapes(self):
-        # input shape: z, z' FIXME: could also use parsed relationship as input
-        latent_input_shape = self.args.latent_relation_space_dim*self.n_agents*2
-        latent_output_shape = self.args.latent_var_dim
-        latent_hidden_sizes = self.args.latent_encoder_hidden_sizes
-        return latent_input_shape, latent_output_shape, latent_hidden_sizes
+        return self.args.latent_relation_space_dim * self.n_agents * 2, \
+               self.args.latent_var_dim, \
+               self.args.latent_encoder_hidden_sizes
 
     def _build_latent_encoder_input(self, batch, t=None):
         # z_q, z_p: [n_agents][latent_relation_space_dim]
@@ -217,5 +265,3 @@ class SeparateLatentMAC:
             inputs = [batch["z_q"][:, t], batch["z_p"][:, t]]
 
         return th.cat([x.reshape(bs, -1) for x in inputs], dim=1)
-
-

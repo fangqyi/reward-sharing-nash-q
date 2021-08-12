@@ -85,6 +85,7 @@ class MetaQLearner:
             self.last_target_update_episode = episode_num
 
     def _train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
+        # TODO: implement mutual information
         # Get the relevant quantities
         rewards = batch["redistributed_rewards"][:, :-1]
         actions = batch["actions"][:, :-1]
@@ -181,13 +182,18 @@ class MetaQLearner:
         # self.mac.init_latent(batch.batch_size)
 
         kl_divs = []
+        ce_losses = []
         for t in range(batch.max_seq_length):
             agent_out = self.mac.forward_agent(batch, idx=idx, t=t)  # (bs,n_actions)
             kl_div = self.mac.compute_kl_div_agent(idx=idx)
+            if self.args.mutual_information_reinforcement:
+                kl_div, ce_loss = kl_div
+                ce_losses.append(ce_loss)
             kl_divs.append(kl_div)  # (bs, ))
             mac_out.append(agent_out)  # [t,(bs,n_actions)]
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
         kl_divs = th.stack(kl_divs, dim=1)[:, :-1]
+        ce_losses = th.stack(ce_losses, dim=1)[:, :-1]
         # (bs,t,n,n_actions), Q values of n_actions
 
         # Pick the Q-Values for the actions taken by each agent
@@ -223,13 +229,17 @@ class MetaQLearner:
         masked_kl_div = kl_divs * kl_mask
         kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
 
+        ce_mask = copy.deepcopy(mask).expand_as(ce_losses)
+        masked_ce_loss = ce_losses * ce_mask
+        ce_loss = masked_ce_loss.sum() / ce_mask.sum()
+
         td_mask = copy.deepcopy(mask).expand_as(td_error)
         # 0-out the targets that came from padded data
         masked_td_error = td_error * td_mask
         # Normal L2 loss, take mean over actual data (LSE)
         td_error_loss = (masked_td_error ** 2).sum() / td_mask.sum()
 
-        loss = td_error_loss + kl_div_loss
+        loss = td_error_loss + kl_div_loss + ce_losses
 
         # Optimise
         self.optimisers[idx].zero_grad()
@@ -242,6 +252,7 @@ class MetaQLearner:
             self.logger.log_stat("agent{}_policy_grad_norm".format(idx), grad_norm, t_env)
             mask_elems = td_mask.sum().item()
             self.logger.log_stat("agent{}_kl_div_abs".format(idx), kl_div_loss.abs().item(), t_env)
+            self.logger.log_stat("agent{}_ce_loss_abs".format(idx), ce_losses.abs().item(), t_env)
             self.logger.log_stat("agent{}_td_error_abs".format(idx), (masked_td_error.abs().sum().item() / mask_elems), t_env)
             self.logger.log_stat("agent{}_target_mean".format(idx), (targets.unsqueeze(-1) * td_mask).sum().item() / (mask_elems ),
                                  t_env)

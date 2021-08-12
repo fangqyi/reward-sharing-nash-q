@@ -47,6 +47,7 @@ class RNNAgentImageVec(nn.Module):
     def __init__(self, args, scheme):
         super(RNNAgentImageVec, self).__init__()
         self.args = args
+        self.scheme = scheme
         c, h, w = scheme["obs"]["vshape"]
         self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
         self.flatten = nn.Flatten()
@@ -63,13 +64,19 @@ class RNNAgentImageVec(nn.Module):
         image_inputs, vec_inputs = inputs
         x = self.flatten(F.relu(self.conv(image_inputs)))
         x = torch.cat([x, vec_inputs], axis=-1)
-        x = self.fc1(x)
-        x = F.relu(x)
+        y = self.fc1(x)
+        y = F.relu(y)
         h_in = hidden_state.reshape(-1, self.args.rnn_hidden_dim)
-        h = self.rnn(x, h_in)
+        h = self.rnn(y, h_in)
         # h = F.relu(self.fc3(h))
         q = self.fc2(h)
-        return q, h
+        if self.args.mutual_information_reinforcement:
+            return q, h, x
+        else:
+            return q, h
+
+    def get_processed_output_shape(self):
+        return self._get_vec_input_shape(self.scheme) + self._get_conv_output_shape() + self.args.rnn_hidden_dim
 
     def _get_conv_output_shape(self):  # ignore padding
         h = (self.args.obs_height - self.args.kernel_size) / self.args.stride + 1

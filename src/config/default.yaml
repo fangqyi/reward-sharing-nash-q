@@ -17,6 +17,11 @@ learner_log_interval: 2000 # Log training stats every {} timesteps
 use_cuda: True # Use gpu by default unless it isn't available
 buffer_cpu_only: True # If true we won't keep all of the replay buffer in vram
 
+# --- Training weights --
+encoder_kl_div_weight: 0.1
+encoder_h_weight: 0.1
+ce_kl_weight: 0.1
+
 # --- Logging options ---
 use_tensorboard: True # Log results to tensorboard
 save_model: True # Save the models to disk
@@ -51,3 +56,5 @@ label: "default_label"
 
 device: "cuda:0"
 device_num: 0
+
+

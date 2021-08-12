@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
+import torch.distributions as D
+from torch.distributions import kl_divergence
 
 from utils.utils import identity, fanin_init, product_of_gaussians, LayerNorm
 
@@ -44,10 +46,8 @@ class MLPMultiGaussianEncoder(nn.Module):
 
     def sample_z(self):
         if self.use_information_bottleneck:
-            posteriors = [torch.distributions.Normal(m, torch.sqrt(s)) for m, s in
-                          zip(torch.unbind(self.z_means), torch.unbind(self.z_vars))]
-            z = [d.rsample() for d in posteriors]
-            self.z = torch.stack(z)
+            posteriors = D.Normal(self.z_means, torch.sqrt(self.z_vars))
+            self.z = posteriors.rsample()
         else:
             self.z = self.z_means
 
@@ -62,14 +62,15 @@ class MLPMultiGaussianEncoder(nn.Module):
             self.z_vars = None
         self.sample_z()
 
+    def get_distribution(self):
+        return D.Normal(self.z_means, torch.sqrt(self.z_vars))
+
     def compute_kl_div(self):
         device = self.z_means[0].device
-        prior = torch.distributions.Normal(torch.zeros(self.output_size).to(device),
+        prior = D.Normal(torch.zeros(self.output_size).to(device),
                                            torch.ones(self.output_size).to(device))
-        posteriors = [torch.distributions.Normal(mu, torch.sqrt(var)) for mu, var in
-                      zip(torch.unbind(self.z_means), torch.unbind(self.z_vars))]
-        kl_divs = [torch.distributions.kl.kl_divergence(post, prior) for post in posteriors]
-        kl_divs = torch.stack(kl_divs)
+        post = D.Normal(self.z_means, torch.sqrt(self.z_vars))
+        kl_divs = kl_divergence(post, prior).sum(dim=-1).mean()
         return kl_divs
 
     def reset(self):
