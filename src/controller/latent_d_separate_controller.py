@@ -251,10 +251,10 @@ class SeparateLatentMAC:
         return inputs
 
     def _build_inference_inputs(self):
-        return [th.cat(h.detach(), i.detach()) for h, i in zip(self.hidden_states, self.inference_inputs)]
+        return [th.cat((h.detach(), i.detach()), dim=-1) for h, i in zip(self.hidden_states, self.inference_inputs)]
 
     def _build_inference_inputs_agent(self, idx: int):
-        return th.cat(self.hidden_states[idx], self.inference_inputs[idx])
+        return th.cat((self.hidden_states[idx], self.inference_inputs[idx]), dim=-1)
 
     def _get_latent_shapes(self):
         return self.args.latent_relation_space_dim * self.n_agents * 2, \
