@@ -59,9 +59,9 @@ class SeparateLatentMAC:
         if self.args.mutual_information_reinforcement:
             enc_d = self.latent_encoders[idx].get_distribution()
             inf_d = self.inference_nets[idx].get_distribution()
-            ce = enc_d.entropy().sum(dim=-1).mean() * self.args.encoder_h_weight + kl_divergence(enc_d, inf_d).sum(dim=-1).mean()*self.args.ce_kl_weight
+            ce = enc_d.entropy().sum(dim=-1) * self.args.encoder_h_weight + kl_divergence(enc_d, inf_d).sum(dim=-1)*self.args.ce_kl_weight
             ce = th.clamp(ce, max=2e3)
-            ce = th.log(1 + th.exp(ce))
+            ce = th.log(1 + th.exp(ce)).unsqueeze(1)
             self.inference_nets[idx].reset()
             self.latent_encoders[idx].reset()
             return enc_div, ce
