@@ -194,7 +194,6 @@ class MetaQLearner:
             mac_out.append(agent_out)  # [t,(bs,n_actions)]
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
         kl_divs = th.stack(kl_divs, dim=1)[:, :-1]
-        print(ce_losses[0].shape)
         ce_losses = th.stack(ce_losses, dim=1)[:, :-1]
         # (bs,t,n,n_actions), Q values of n_actions
 
@@ -233,7 +232,7 @@ class MetaQLearner:
 
         ce_mask = copy.deepcopy(mask).expand_as(ce_losses)
         masked_ce_loss = ce_losses * ce_mask
-        ce_loss = masked_ce_loss.sum() / ce_mask.sum()
+        ce_losses = masked_ce_loss.sum() / ce_mask.sum()
 
         td_mask = copy.deepcopy(mask).expand_as(td_error)
         # 0-out the targets that came from padded data
