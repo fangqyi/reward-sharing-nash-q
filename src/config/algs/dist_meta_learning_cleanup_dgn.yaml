@@ -34,6 +34,10 @@ target_update_interval: 200
 # use the Q_Learner to train
 agent_output_type: "q"
 
+# centralized critic and altruistic agents
+centralized_social_welfare: False
+separate_agents: False
+
 is_obs_image: True
 # conv params
 kernel_size: 3
