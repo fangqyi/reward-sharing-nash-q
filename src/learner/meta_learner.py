@@ -185,6 +185,7 @@ class MetaQLearner:
         ce_losses = []
         for t in range(batch.max_seq_length):
             agent_out = self.mac.forward_agent(batch, idx=idx, t=t)  # (bs,n_actions)
+            _ = self.mac.forward_inference_net_agent(idx=idx)
             kl_div = self.mac.compute_kl_div_agent(idx=idx)
             if self.args.mutual_information_reinforcement:
                 kl_div, ce_loss = kl_div
