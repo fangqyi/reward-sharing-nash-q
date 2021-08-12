@@ -51,6 +51,8 @@ centralized_social_welfare: False
 separate_agents: True
 obs_agent_id: False
 
+mutual_infomation_reinforcement: False
+
 load_pretrained_model: False
 
 # debug: test if deterministic sharing schemes improve performance

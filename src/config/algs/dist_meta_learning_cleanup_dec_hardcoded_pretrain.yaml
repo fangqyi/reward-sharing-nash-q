@@ -50,6 +50,8 @@ agent: "rnn_agent_image_vec"
 centralized_social_welfare: False
 separate_agents: False
 
+mutual_infomation_reinforcement: False
+
 load_pretrained_model: False
 
 # debug: test if deterministic sharing schemes improve performance
