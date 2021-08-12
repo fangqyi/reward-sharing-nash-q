@@ -51,7 +51,7 @@ centralized_social_welfare: False
 separate_agents: True
 obs_agent_id: False
 
-mutual_information_reinforcement: False
+mutual_information_reinforcement: True
 
 load_pretrained_model: False
 
