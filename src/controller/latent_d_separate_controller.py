@@ -60,8 +60,11 @@ class SeparateLatentMAC:
             enc_d = self.latent_encoders[idx].get_distribution()
             inf_d = self.inference_nets[idx].get_distribution()
             ce = enc_d.entropy().sum(dim=-1) * self.args.encoder_h_weight + kl_divergence(enc_d, inf_d).sum(dim=-1)*self.args.ce_kl_weight
+            print(ce.shape)
             ce = th.clamp(ce, max=2e3)
+            print(ce.shape)
             ce = th.log(1 + th.exp(ce)).unsqueeze(1)
+            print(ce.shape)
             self.inference_nets[idx].reset()
             self.latent_encoders[idx].reset()
             return enc_div, ce

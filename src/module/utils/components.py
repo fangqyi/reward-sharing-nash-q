@@ -70,8 +70,6 @@ class MLPMultiGaussianEncoder(nn.Module):
         prior = D.Normal(torch.zeros(self.output_size).to(device),
                                            torch.ones(self.output_size).to(device))
         post = D.Normal(self.z_means, torch.sqrt(self.z_vars))
-        print("raw {}".format(kl_divergence(post,prior).shape))
-        print("raw after sum {}".format(kl_divergence(post, prior).sum(dim=-1).shape))
         kl_divs = kl_divergence(post, prior).sum(dim=-1).unsqueeze(1)
         return kl_divs
 
