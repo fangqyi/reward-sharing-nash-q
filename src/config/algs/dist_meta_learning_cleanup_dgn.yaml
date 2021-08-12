@@ -38,7 +38,7 @@ agent_output_type: "q"
 centralized_social_welfare: False
 separate_agents: False
 
-mutual_infomation_reinforcement: False
+mutual_information_reinforcement: False
 
 is_obs_image: True
 # conv params
