@@ -18,9 +18,9 @@ use_cuda: True # Use gpu by default unless it isn't available
 buffer_cpu_only: True # If true we won't keep all of the replay buffer in vram
 
 # --- Training weights --
-encoder_kl_div_weight: 0.1
-encoder_h_weight: 0.01
-ce_kl_weight: 0.01
+encoder_kl_div_weight: 0
+encoder_h_weight: 0.001
+ce_kl_weight: 0.001
 
 # --- Logging options ---
 use_tensorboard: True # Log results to tensorboard
