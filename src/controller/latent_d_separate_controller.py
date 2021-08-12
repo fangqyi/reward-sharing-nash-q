@@ -130,9 +130,13 @@ class SeparateLatentMAC:
         else:
             agent_input = agent_inputs[idx]
         if self.args.agent == "dgn_agent":
-            agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, mask, self.hidden_states[idx])
+            outputs = self.agents[idx](agent_input, mask, self.hidden_states[idx])
         else:
-            agent_out, self.hidden_states[idx] = self.agents[idx](agent_input, self.hidden_states[idx])
+            outputs = self.agents[idx](agent_input, self.hidden_states[idx])
+        if self.args.mutual_information_reinforcement:
+            agent_out, self.hidden_states[idx], self.inference_inputs[idx] = outputs
+        else:
+            agent_out, self.hidden_states[idx] = outputs
         agent_out = agent_out.reshape(ep_batch.batch_size, -1)
         return agent_out
 
