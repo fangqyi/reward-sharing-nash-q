@@ -14,7 +14,7 @@ disable_rotation_action: True
 # whether the other agent used the cleaning beam
 # Else, observe the full 1-hot action of other agent
 obs_cleaned_1hot: True
-map_source: 'customized'
+map_source: 'lio'  # 'customized'
 map_name: 'cleanup_small_sym'  # 'cleanup_small_sym'
 shuffle_spawn: False
 view_size: 4 # 7
