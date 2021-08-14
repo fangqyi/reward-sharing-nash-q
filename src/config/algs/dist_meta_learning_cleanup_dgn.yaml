@@ -37,7 +37,7 @@ agent_output_type: "q"
 # centralized critic and altruistic agents
 centralized_social_welfare: False
 separate_agents: False
-
+sharing_scheme_encoder: True
 mutual_information_reinforcement: False
 
 is_obs_image: True

@@ -49,7 +49,7 @@ agent: "rnn_agent_image_vec"
 # centralized critic and altruistic agents
 centralized_social_welfare: False
 separate_agents: False
-
+sharing_scheme_encoder: True
 mutual_information_reinforcement: False
 
 load_pretrained_model: True

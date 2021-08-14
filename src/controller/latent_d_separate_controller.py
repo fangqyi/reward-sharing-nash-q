@@ -162,7 +162,9 @@ class SeparateLatentMAC:
     def parameters(self):
         params = []
         for idx in range(self.n_agents):
-            params.append(list(self.agents[idx].parameters()) + list(self.latent_encoders[idx].parameters()))
+            params.append(list(self.agents[idx].parameters()))
+            if self.args.sharing_scheme_encoder:
+                params.append(list(self.latent_encoders[idx].parameters()))
             if self.args.mutual_information_reinforcement:
                 params.append(list(self.inference_nets[idx].parameters()))
         return params
@@ -170,21 +172,24 @@ class SeparateLatentMAC:
     def load_state(self, other_mac):
         for idx in range(self.n_agents):
             self.agents[idx].load_state_dict(other_mac.agents[idx].state_dict())
-            self.latent_encoders[idx].load_state_dict(other_mac.latent_encoders[idx].state_dict())
+            if self.args.sharing_scheme_encoder:
+                self.latent_encoders[idx].load_state_dict(other_mac.latent_encoders[idx].state_dict())
             if self.args.mutual_information_reinforcement:
                 self.inference_nets[idx].load_state_dict(other_mac.inference_nets[idx].state_dict())
 
     def cuda(self):
         for idx in range(self.n_agents):
             self.agents[idx].cuda()
-            self.latent_encoders[idx].cuda()
+            if self.args.sharing_scheme_encoder:
+                self.latent_encoders[idx].cuda()
             if self.args.mutual_information_reinforcement:
                 self.inference_nets[idx].cuda()
 
     def save_models(self, path):
         for idx in range(self.n_agents):
             th.save(self.agents[idx].state_dict(), "{}/agent{}.th".format(path, idx))
-            th.save(self.latent_encoders[idx].state_dict(), "{}/encoder{}.th".format(path, idx))
+            if self.args.sharing_scheme_encoder:
+                th.save(self.latent_encoders[idx].state_dict(), "{}/encoder{}.th".format(path, idx))
             if self.args.mutual_information_reinforcement:
                 th.save(self.inference_nets[idx].state_dict(), "{}/inference_net{}.th".format(path, idx))
 
@@ -192,8 +197,9 @@ class SeparateLatentMAC:
         for idx in range(self.n_agents):
             self.agents[idx].load_state_dict(
                 th.load("{}/agent{}.th".format(path, idx), map_location=lambda storage, loc: storage))
-            self.latent_encoders[idx].load_state_dict(
-                th.load("{}/encoder{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+            if self.args.sharing_scheme_encoder:
+                self.latent_encoders[idx].load_state_dict(
+                    th.load("{}/encoder{}.th".format(path, idx), map_location=lambda storage, loc: storage))
             if self.args.mutual_information_reinforcement:
                 self.inference_nets[idx].load_state_dict(
                     th.load("{}/inference_net{}.th".format(path, idx), map_location=lambda storage, loc: storage))
@@ -204,7 +210,8 @@ class SeparateLatentMAC:
         self.action_selector = EpsilonGreedyActionSelector(self.args, self.train_phase)
 
         latent_input_shape, latent_output_shape, latent_hidden_sizes = self._get_latent_shapes()
-        self.latent_encoders = [MLPMultiGaussianEncoder(latent_input_shape, latent_output_shape, latent_hidden_sizes)
+        if self.args.sharing_scheme_encoder:
+            self.latent_encoders = [MLPMultiGaussianEncoder(latent_input_shape, latent_output_shape, latent_hidden_sizes)
                                 for _ in range(self.n_agents)]
         if self.args.mutual_information_reinforcement:
             self.inference_nets = [
@@ -224,7 +231,11 @@ class SeparateLatentMAC:
                 vec_inputs.append(th.zeros_like(batch["actions_onehot"][:, t]))
             else:
                 vec_inputs.append(batch["actions_onehot"][:, t - 1])
-        vec_inputs.append(self.sample_batch_latent_var(batch, t))
+
+        if self.args.sharing_scheme_encoder:
+            vec_inputs.append(self.sample_batch_latent_var(batch, t))
+        else:
+            vec_inputs.extend([batch["z_q"][:, t-1], batch["z_p"][:, t-1]])
 
         # process observation
         obs = batch["obs"][:, t]

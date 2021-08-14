@@ -50,6 +50,7 @@ agent: "rnn_agent_image_vec"
 centralized_social_welfare: True
 separate_agents: False
 
+sharing_scheme_encoder: True
 mutual_information_reinforcement: False
 
 load_pretrained_model: True
