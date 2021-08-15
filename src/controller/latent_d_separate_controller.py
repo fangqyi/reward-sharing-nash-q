@@ -248,8 +248,6 @@ class SeparateLatentMAC:
             vec_inputs.extend([batch["z_q"][:, t-1].reshape(-1, self.args.latent_relation_space_dim * self.n_agents),
                                batch["z_p"][:, t-1].reshape(-1, self.args.latent_relation_space_dim * self.n_agents)])
 
-        print(vec_inputs)
-
         # process observation
         obs = batch["obs"][:, t]
 
@@ -258,16 +256,11 @@ class SeparateLatentMAC:
                               obs.shape[-1])  # flatten the first two dims
             obs = list(th.split(obs, 1, dim=1))
             vec_inputs = th.cat(vec_inputs, dim=-1)
-            print(vec_inputs.shape)
             vec_inputs = vec_inputs.unsqueeze(1).expand(-1, self.n_agents, -1)
-            print(vec_inputs.shape)
             vec_inputs = list(th.split(vec_inputs, 1, dim=1))
-            print(vec_inputs)
-            print(vec_inputs[0].shape)
             for _ in range(self.n_agents):
                 obs[_] = obs[_].squeeze(1)
                 vec_inputs[_] = vec_inputs[_].squeeze(1)
-            print("vec inputs shape {}".format(vec_inputs[0].shape))
             inputs = (obs, vec_inputs)  # return two objects as nn inputs
         else:
             inputs.append(obs)
