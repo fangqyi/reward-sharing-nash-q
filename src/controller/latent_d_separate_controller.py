@@ -246,6 +246,7 @@ class SeparateLatentMAC:
             vec_inputs.append(self.sample_batch_latent_var(batch, t))
         else:
             vec_inputs.extend([batch["z_q"][:, t-1], batch["z_p"][:, t-1]])
+        print("vec inputs shape {}".format(vec_inputs.shape))
 
         # process observation
         obs = batch["obs"][:, t]

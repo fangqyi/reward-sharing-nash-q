@@ -100,4 +100,5 @@ class RNNAgentImageVec(nn.Module):
             input_shape += self.args.latent_relation_space_dim * self.args.n_agents * 2
         elif self.args.meta_type == "distance_latent":
             input_shape += self.args.latent_var_dim
+        print("input rnn agent shape {}".format(input_shape))
         return input_shape
