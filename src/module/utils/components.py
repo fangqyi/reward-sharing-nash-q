@@ -13,7 +13,7 @@ class MLPMultiGaussianEncoder(nn.Module):
                  output_size,
                  mlp_hidden_sizes,
                  mlp_init_w=3e-3,
-                 mlp_hidden_activation=F.relu,
+                 mlp_hidden_activation=F.leaky_relu,
                  mlp_output_activation=identity,
                  mlp_hidden_init=fanin_init,
                  mlp_bias_init_value=0.1,
@@ -81,11 +81,11 @@ class MLPMultiGaussianEncoder(nn.Module):
 class MLP(nn.Module):
     # https://github.com/katerakelly/oyster/blob/master/rlkit/torch/networks.py
     def __init__(self,
-                 hidden_sizes,
                  input_size,
                  output_size,
+                 hidden_sizes,
                  init_w=3e-3,
-                 hidden_activation=F.leaky_relu_,
+                 hidden_activation=F.leaky_relu,
                  output_activation=identity,
                  hidden_init=fanin_init,
                  b_init_value=0.1,
@@ -136,22 +136,21 @@ class MLP(nn.Module):
             return output
 
 class SoftmaxMLP(MLP):
-    # https://github.com/katerakelly/oyster/blob/master/rlkit/torch/networks.py
     def __init__(self,
-                 hidden_sizes,
                  input_size,
                  output_size,
+                 hidden_sizes,
                  init_w=3e-3,
-                 hidden_activation=F.relu,
+                 hidden_activation=F.leaky_relu,
                  output_activation=identity,
                  hidden_init=fanin_init,
                  b_init_value=0.1,
                  layer_norm=False,
                  layer_norm_params=None,
                  ):
-        super(SoftmaxMLP, self).__init__(hidden_sizes,
-                                         input_size,
+        super(SoftmaxMLP, self).__init__(input_size,
                                          output_size,
+                                         hidden_sizes,
                                          init_w,
                                          hidden_activation,
                                          output_activation,
