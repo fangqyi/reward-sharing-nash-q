@@ -99,7 +99,7 @@ def run_distance_sequential(args, logger):
         "actions": {"vshape": (1,), "group": "agents", "dtype": th.long},
         "z_q": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
         "z_p": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
-        "z_idx": {"vshape": (1,), "dtype": th.uint8},
+        "z_idx": {"vshape": (1,), "dtype": th.int64},
         "avail_actions": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": th.int},
         "rewards": {"vshape": env_info["reward_shape"], },
         "redistributed_rewards": {"vshape": env_info["reward_shape"], },
