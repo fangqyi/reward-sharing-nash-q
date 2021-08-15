@@ -190,7 +190,7 @@ def run_distance_sequential(args, logger):
                 # Run for a whole episode at a time
                 z_q_cp = tasks[idx][0].clone()
                 z_p_cp = tasks[idx][1].clone()
-                episode_batch = runner.run(z_q=z_q_cp, z_p=z_p_cp, z_idx=idx, test_mode=False, train_phase=train_phase)
+                episode_batch = runner.run(z_q=z_q_cp, z_p=z_p_cp, z_idx=[idx], test_mode=False, train_phase=train_phase)
                 buffer.insert_episode_batch(episode_batch)
 
                 if buffer.can_sample(args.batch_size):
