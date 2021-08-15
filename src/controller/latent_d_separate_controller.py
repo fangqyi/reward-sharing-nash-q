@@ -259,7 +259,7 @@ class SeparateLatentMAC:
             for _ in range(self.n_agents):
                 obs[_] = obs[_].squeeze(1)
                 vec_inputs[_] = vec_inputs[_].squeeze(1)
-            print("vec inputs shape {}".format(vec_inputs.shape))
+            print("vec inputs shape {}".format(vec_inputs[0].shape))
             inputs = (obs, vec_inputs)  # return two objects as nn inputs
         else:
             inputs.append(obs)
