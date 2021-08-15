@@ -23,7 +23,7 @@ latent_relation_space_dim: 1
 latent_relation_space_upper_bound: 1.5
 latent_relation_space_lower_bound: 0.0
 latent_var_dim: 2
-latent_encoder_hidden_sizes: [32, 32]
+latent_encoder_hidden_sizes: [64, 64]
 pretrained_task_num: 32
 total_pretrain_steps: 1500000
 z_critic_lr: 0.001
@@ -51,7 +51,7 @@ centralized_social_welfare: False
 separate_agents: False
 sharing_scheme_encoder: True
 mutual_information_reinforcement: True
-
+inference_net_hidden_sizes: [64, 64]
 load_pretrained_model: False
 
 # debug: test if deterministic sharing schemes improve performance

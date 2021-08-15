@@ -220,13 +220,13 @@ class SeparateLatentMAC:
                                 for _ in range(self.n_agents)]
             if self.args.mutual_information_reinforcement:
                 self.inference_nets = [MLPMultiGaussianEncoder(self.agents[0].get_processed_output_shape(),
-                                                               latent_output_shape, latent_hidden_sizes)
+                                                               latent_output_shape, self.args.inference_net_hidden_sizes)
                                        for _ in range(self.n_agents)]
         else:
             if self.args.mutual_information_reinforcement:
                 self.inference_nets = [SoftmaxMLP(self.agents[0].get_processed_output_shape(),
                                                   self.args.num_hc_pret_tasks,  # shotgun
-                                                  latent_hidden_sizes) for _ in range(self.n_agents)]
+                                                  self.args.inference_net_hidden_sizes) for _ in range(self.n_agents)]
         self.hidden_states = []
         self.inference_inputs = []
 

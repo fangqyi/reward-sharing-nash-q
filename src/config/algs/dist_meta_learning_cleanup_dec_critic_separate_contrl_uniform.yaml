@@ -23,7 +23,7 @@ latent_relation_space_dim: 1
 latent_relation_space_upper_bound: 10.0
 latent_relation_space_lower_bound: 0.0
 latent_var_dim: 2
-latent_encoder_hidden_sizes: [32, 32]
+latent_encoder_hidden_sizes: [64, 64]
 pretrained_task_num: 32
 total_pretrain_steps: 1500000
 z_critic_lr: 0.001
@@ -52,9 +52,14 @@ separate_agents: True
 obs_agent_id: False
 
 sharing_scheme_encoder: True
-mutual_information_reinforcement: True
-
+mutual_information_reinforcement: False
+inference_net_hidden_sizes: [64, 64]
 load_pretrained_model: False
+
+# --- Training weights --
+encoder_kl_div_weight: 10
+encoder_h_weight: 0.001
+ce_kl_weight: 0.001
 
 # debug: test if deterministic sharing schemes improve performance
 deterministic_pretrained_tasks: True
