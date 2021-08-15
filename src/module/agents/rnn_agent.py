@@ -49,7 +49,8 @@ class RNNAgentImageVec(nn.Module):
         self.args = args
         self.scheme = scheme
         c, h, w = scheme["obs"]["vshape"]
-        self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size, stride=args.stride)
+        self.conv = nn.Conv2d(in_channels=c, out_channels=args.conv_out_dim, kernel_size=args.kernel_size,
+                              stride=args.stride)
         self.flatten = nn.Flatten()
         input_shape = self._get_vec_input_shape(scheme) + self._get_conv_output_shape()
         self.fc1 = nn.Linear(input_shape, args.rnn_hidden_dim)
@@ -93,10 +94,10 @@ class RNNAgentImageVec(nn.Module):
             input_shape += scheme["actions_onehot"]["vshape"][0]
         if self.args.obs_agent_id:
             input_shape += self.args.n_agents
-        if self.args.meta_type == "pq":
-            input_shape += self.args.n_agents*self.args.n_agents*2
-        if self.args.meta_type == "distance_latent":
-            input_shape += self.args.latent_var_dim
-        if not self.args.sharing_scheme_encoder:
+        # if self.args.meta_type == "pq":
+        #     input_shape += self.args.n_agents*self.args.n_agents*2
+        if not self.args.sharing_scheme_encoder:  # sharing scheme as direct input in obs
             input_shape += self.args.latent_relation_space_dim * self.args.n_agents * 2
+        elif self.args.meta_type == "distance_latent":
+            input_shape += self.args.latent_var_dim
         return input_shape
