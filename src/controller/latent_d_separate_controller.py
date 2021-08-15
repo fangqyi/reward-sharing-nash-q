@@ -247,6 +247,8 @@ class SeparateLatentMAC:
         else:
             vec_inputs.extend([batch["z_q"][:, t-1], batch["z_p"][:, t-1]])
 
+        print(vec_inputs)
+
         # process observation
         obs = batch["obs"][:, t]
 
