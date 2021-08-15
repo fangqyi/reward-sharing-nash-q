@@ -259,7 +259,7 @@ class SeparateLatentMAC:
             obs = list(th.split(obs, 1, dim=1))
             vec_inputs = th.cat(vec_inputs, dim=-1)
             print(vec_inputs.shape)
-            vec_inputs = vec_inputs.unsqueeze(1).expand(1, self.n_agents, 1)
+            vec_inputs = vec_inputs.unsqueeze(1).expand(-1, self.n_agents, -1)
             print(vec_inputs.shape)
             vec_inputs = list(th.split(vec_inputs, 1, dim=1))
             print(vec_inputs)
