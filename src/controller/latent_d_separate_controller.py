@@ -245,7 +245,8 @@ class SeparateLatentMAC:
         if self.args.sharing_scheme_encoder:
             vec_inputs.append(self.sample_batch_latent_var(batch, t))
         else:
-            vec_inputs.extend([batch["z_q"][:, t-1].flatten(), batch["z_p"][:, t-1].flatten()])
+            vec_inputs.extend([batch["z_q"][:, t-1].reshape(-1, self.args.latent_relation_space_dim * self.n_agents),
+                               batch["z_p"][:, t-1].flatten(-1, self.args.latent_relation_space_dim * self.n_agents)])
 
         print(vec_inputs)
 
