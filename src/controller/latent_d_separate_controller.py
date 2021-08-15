@@ -72,6 +72,7 @@ class SeparateLatentMAC:
             return enc_div
         elif self.args.mutual_information_reinforcement and not self.args.sharing_scheme_encoder:
             ce = (- 1.0/self.args.num_hc_pret_tasks * th.log(self.inference_nets[idx](self._build_inference_inputs_agent(idx)).gather(1, z_idx.reshape(-1, 1)))).mean()
+            ce = ce * self.args.ce_kl_weight
             return ce
 
     def forward(self, ep_batch, t, test_mode=False):
