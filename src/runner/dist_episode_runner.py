@@ -57,7 +57,7 @@ class DistEpisodeRunner:
         self.env.reset()
         self.t = 0
 
-    def run(self, z_q, z_p, test_mode=False, sample_return_mode=False, train_phase="pretrain"):  # run one eps
+    def run(self, z_q, z_p, z_idx, test_mode=False, sample_return_mode=False, train_phase="pretrain"):  # run one eps
         self.reset()
 
         if isinstance(z_p, torch.Tensor):
@@ -84,6 +84,7 @@ class DistEpisodeRunner:
                     "adjacent_agents": [self.env.get_adj()],
                     "z_p": z_p,
                     "z_q": z_q,
+                    "z_idx": z_idx,
                 }
             else:
                 pre_transition_data = {
@@ -93,6 +94,7 @@ class DistEpisodeRunner:
                     "adjacent_agents": [[[1] * self.n_agents] * self.n_agents],
                     "z_p": z_p,
                     "z_q": z_q,
+                    "z_idx": z_idx,
                 }
 
             self.batch.update(pre_transition_data, ts=self.t)
@@ -134,6 +136,7 @@ class DistEpisodeRunner:
                 "adjacent_agents": [self.env.get_adj()],
                 "z_p": z_p,
                 "z_q": z_q,
+                "z_idx": z_idx,
             }
         else:
             last_data = {
@@ -143,6 +146,7 @@ class DistEpisodeRunner:
                 "adjacent_agents": [[[1] * self.n_agents] * self.n_agents],
                 "z_p": z_p,
                 "z_q": z_q,
+                "z_idx": z_idx,
             }
         self.batch.update(last_data, ts=self.t)
 

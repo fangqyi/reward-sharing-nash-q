@@ -99,6 +99,7 @@ def run_distance_sequential(args, logger):
         "actions": {"vshape": (1,), "group": "agents", "dtype": th.long},
         "z_q": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
         "z_p": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
+        "z_idx": {"vshape": (1,), "dtype": th.uint8},
         "avail_actions": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": th.int},
         "rewards": {"vshape": env_info["reward_shape"], },
         "redistributed_rewards": {"vshape": env_info["reward_shape"], },
@@ -185,11 +186,11 @@ def run_distance_sequential(args, logger):
         else:
             tasks = sample_dist_norm(args)
         while runner.t_env <= args.total_pretrain_steps:
-            for z_q, z_p in tasks:
+            for idx in range(len(tasks)):
                 # Run for a whole episode at a time
-                z_q_cp = z_q.clone()
-                z_p_cp = z_p.clone()
-                episode_batch = runner.run(z_q=z_q_cp, z_p=z_p_cp, test_mode=False, train_phase=train_phase)
+                z_q_cp = tasks[idx].clone()
+                z_p_cp = tasks[idx].clone()
+                episode_batch = runner.run(z_q=z_q_cp, z_p=z_p_cp, z_idx=idx, test_mode=False, train_phase=train_phase)
                 buffer.insert_episode_batch(episode_batch)
 
                 if buffer.can_sample(args.batch_size):
@@ -367,10 +368,12 @@ def sample_dist_norm(args, num=None):
         distribution = Uniform(torch.tensor([lower], dtype=torch.float).to(args.device),
                                torch.tensor([upper], dtype=torch.float).to(args.device))
         z = (
-        distribution.sample(size).view(args.n_agents, dim_num), distribution.sample(size).view(args.n_agents, dim_num))
+            distribution.sample(size).view(args.n_agents, dim_num),
+            distribution.sample(size).view(args.n_agents, dim_num))
         z[0].requires_grad = True
         z[1].requires_grad = True
         return z
+
 
 # test on simple hardcoded example
 def get_hardcoded_tasks(args):
@@ -379,6 +382,7 @@ def get_hardcoded_tasks(args):
         tasks.append((torch.tensor(z_q, dtype=torch.float).view(1, args.n_agents, args.latent_relation_space_dim),
                       torch.tensor(z_p, dtype=torch.float).view(1, args.n_agents, args.latent_relation_space_dim)))
     return tasks
+
 
 # test to see if guaranteed uniform task distribution improve performances
 def gen_uniform_tasks(args):
@@ -393,12 +397,13 @@ def gen_uniform_tasks(args):
     tasks = list(combinations_with_replacement(tasks, args.n_agents))
     return list(combinations_with_replacement([torch.stack(task, dim=0).unsqueeze(dim=0) for task in tasks], 2))
 
+
 def gen_uniform_tasks_dim(dim_num, cur_dim, div_num, lower, upper):
     if cur_dim == dim_num:
         return [[]]
     old_ret = gen_uniform_tasks_dim(dim_num, cur_dim + 1, div_num, lower, upper)
     ret = []
-    for div in range(0, div_num+1):
+    for div in range(0, div_num + 1):
         new_val = lower + div * (upper - lower) / div_num
         for l in old_ret:
             t = l.copy()

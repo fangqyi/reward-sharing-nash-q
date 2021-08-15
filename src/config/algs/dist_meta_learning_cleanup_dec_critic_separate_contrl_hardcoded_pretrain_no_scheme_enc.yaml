@@ -51,7 +51,7 @@ centralized_social_welfare: False
 separate_agents: True
 obs_agent_id: False
 sharing_scheme_encoder: False
-mutual_information_reinforcement: False
+mutual_information_reinforcement: True
 
 load_pretrained_model: False
 
@@ -63,3 +63,4 @@ div_num: 2
 hardcoded_pretrained_tasks: True
 hardcoded_tasks_zp: [[0,10], [0,0]]
 hardcoded_tasks_zq: [[0,10], [0,0]]
+num_hc_pret_tasks: 2

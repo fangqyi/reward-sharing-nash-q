@@ -6,6 +6,7 @@ from module.agents import REGISTRY as agent_REGISTRY
 
 # This multi-agent controller shares parameters between agents
 from module.utils import MLPMultiGaussianEncoder
+from module.utils.components import SoftmaxMLP
 
 
 class SeparateLatentMAC:
@@ -54,19 +55,24 @@ class SeparateLatentMAC:
         divs = th.stack(divs, dim=1)
         return divs
 
-    def compute_kl_div_agent(self, idx):
-        enc_div = self.latent_encoders[idx].compute_kl_div() * self.args.encoder_kl_div_weight
-        if self.args.mutual_information_reinforcement:
+    def compute_kl_div_agent(self, idx, z_idx=None):
+        if self.args.mutual_information_reinforcement and self.args.sharing_scheme_encoder:
+            enc_div = self.latent_encoders[idx].compute_kl_div() * self.args.encoder_kl_div_weight
             enc_d = self.latent_encoders[idx].get_distribution()
             inf_d = self.inference_nets[idx].get_distribution()
-            ce = enc_d.entropy().sum(dim=-1) * self.args.encoder_h_weight + kl_divergence(enc_d, inf_d).sum(dim=-1)*self.args.ce_kl_weight
+            ce = enc_d.entropy().sum(dim=-1).mean() * self.args.encoder_h_weight + kl_divergence(enc_d, inf_d).sum(dim=-1).mean()*self.args.ce_kl_weight
             ce = th.clamp(ce, max=2e3)
-            ce = th.log(1 + th.exp(ce)).unsqueeze(1)
+            ce = th.log(1 + th.exp(ce))
             self.inference_nets[idx].reset()
             self.latent_encoders[idx].reset()
             return enc_div, ce
-        self.latent_encoders[idx].reset()
-        return enc_div
+        elif not self.args.mutual_information_reinforcement and self.args.sharing_scheme_encoder:
+            enc_div = self.latent_encoders[idx].compute_kl_div() * self.args.encoder_kl_div_weight
+            self.latent_encoders[idx].reset()
+            return enc_div
+        elif self.args.mutual_information_reinforcement and not self.args.sharing_scheme_encoder:
+            ce = - 1.0/self.args.num_hc_pret_tasks * th.log(self.inference_nets[idx](self._build_inference_inputs_agent(idx)).gather(1, z_idx.reshape(-1, 1)))
+            return ce
 
     def forward(self, ep_batch, t, test_mode=False):
         agent_inputs = self._build_inputs(ep_batch, t)
@@ -139,7 +145,6 @@ class SeparateLatentMAC:
 
     def forward_inference_net_agent(self, idx):
         self.inference_nets[idx](self._build_inference_inputs_agent(idx))
-        return self.inference_nets[idx].get_distribution()
 
     def init_hidden(self, batch_size):
         if 'init_hidden' in dir(self.agents[0]):
@@ -213,10 +218,15 @@ class SeparateLatentMAC:
         if self.args.sharing_scheme_encoder:
             self.latent_encoders = [MLPMultiGaussianEncoder(latent_input_shape, latent_output_shape, latent_hidden_sizes)
                                 for _ in range(self.n_agents)]
-        if self.args.mutual_information_reinforcement:
-            self.inference_nets = [
-                MLPMultiGaussianEncoder(self.agents[0].get_processed_output_shape(), latent_output_shape,
-                                        latent_hidden_sizes) for _ in range(self.n_agents)]
+            if self.args.mutual_information_reinforcement:
+                self.inference_nets = [MLPMultiGaussianEncoder(self.agents[0].get_processed_output_shape(),
+                                                               latent_output_shape, latent_hidden_sizes)
+                                       for _ in range(self.n_agents)]
+        else:
+            if self.args.mutual_information_reinforcement:
+                self.inference_nets = [SoftmaxMLP(self.agents[0].get_processed_output_shape(),
+                                                  self.args.num_hc_pret_tasks,  # shotgun
+                                                  latent_hidden_sizes) for _ in range(self.n_agents)]
         self.hidden_states = []
         self.inference_inputs = []
 

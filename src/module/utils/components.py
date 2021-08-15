@@ -70,7 +70,7 @@ class MLPMultiGaussianEncoder(nn.Module):
         prior = D.Normal(torch.zeros(self.output_size).to(device),
                                            torch.ones(self.output_size).to(device))
         post = D.Normal(self.z_means, torch.sqrt(self.z_vars))
-        kl_divs = kl_divergence(post, prior).sum(dim=-1).unsqueeze(1)
+        kl_divs = kl_divergence(post, prior).sum(dim=-1).mean()
         return kl_divs
 
     def reset(self):
@@ -85,7 +85,7 @@ class MLP(nn.Module):
                  input_size,
                  output_size,
                  init_w=3e-3,
-                 hidden_activation=F.relu,
+                 hidden_activation=F.leaky_relu_,
                  output_activation=identity,
                  hidden_init=fanin_init,
                  b_init_value=0.1,
@@ -134,6 +134,39 @@ class MLP(nn.Module):
             return output, preactivation
         else:
             return output
+
+class SoftmaxMLP(MLP):
+    # https://github.com/katerakelly/oyster/blob/master/rlkit/torch/networks.py
+    def __init__(self,
+                 hidden_sizes,
+                 input_size,
+                 output_size,
+                 init_w=3e-3,
+                 hidden_activation=F.relu,
+                 output_activation=identity,
+                 hidden_init=fanin_init,
+                 b_init_value=0.1,
+                 layer_norm=False,
+                 layer_norm_params=None,
+                 ):
+        super(SoftmaxMLP, self).__init__(hidden_sizes,
+                                         input_size,
+                                         output_size,
+                                         init_w,
+                                         hidden_activation,
+                                         output_activation,
+                                         hidden_init,
+                                         b_init_value,
+                                         layer_norm,
+                                         layer_norm_params)
+
+    def forward(self, input, return_preactivation=False):
+        output = super().forward(input, return_preactivation)
+        if return_preactivation:
+            output[0] = F.softmax(output[0], dim=-1)
+        else:
+            output = F.softmax(output, dim=-1)
+        return output
 
 class FlattenMLP(MLP):
     """

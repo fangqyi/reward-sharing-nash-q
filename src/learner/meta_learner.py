@@ -99,13 +99,13 @@ class MetaQLearner:
         self.mac.init_hidden(batch.batch_size)
         # self.mac.init_latent(batch.batch_size)
 
-        kl_divs = []
+        kl_divs = 0
         for t in range(batch.max_seq_length):
             agent_outs = self.mac.forward(batch, t=t)  # (bs,n,n_actions)
-            kl_divs.append(self.mac.compute_kl_div())
+            kl_divs += self.mac.compute_kl_div()
             mac_out.append(agent_outs)  # [t,(bs,n,n_actions)]
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
-        kl_divs = th.stack(kl_divs, dim=1)[:, :-1]
+        kl_divs /= batch.max_seq_length
         # (bs,t,n,n_actions), Q values of n_actions
 
         # Pick the Q-Values for the actions taken by each agent
@@ -137,9 +137,7 @@ class MetaQLearner:
         td_error = (chosen_action_qvals - targets.detach())  # no gradient through target net
         # (bs,t,1)
 
-        kl_mask = copy.deepcopy(mask).expand_as(kl_divs)
-        masked_kl_div = kl_divs * kl_mask
-        kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
+        kl_div_loss = kl_divs
 
         mask = mask.expand_as(td_error)
 
@@ -181,24 +179,26 @@ class MetaQLearner:
         self.mac.init_hidden_agent(batch.batch_size, idx)
         # self.mac.init_latent(batch.batch_size)
 
-        kl_divs = []
-        ce_losses = []
+        kl_divs = 0
+        ce_losses = 0
         for t in range(batch.max_seq_length):
             agent_out = self.mac.forward_agent(batch, idx=idx, t=t)  # (bs,n_actions)
-            if self.args.mutual_information_reinforcement:
-                _ = self.mac.forward_inference_net_agent(idx=idx)
-            if self.args.sharing_scheme_encoder:
-                kl_div = self.mac.compute_kl_div_agent(idx=idx)
-                if self.args.mutual_information_reinforcement:
-                    kl_div, ce_loss = kl_div
-                    ce_losses.append(ce_loss)
-                    kl_divs.append(kl_div)  # (bs, ))
             mac_out.append(agent_out)  # [t,(bs,n_actions)]
+            if self.args.mutual_information_reinforcement and self.args.sharing_scheme_encoder:
+                self.mac.forward_inference_net_agent(idx=idx)
+                kl_div, ce_loss = self.mac.compute_kl_div_agent(idx=idx)
+                ce_losses += ce_loss
+                kl_divs += kl_div  # (bs, ))
+            elif not self.args.mutual_information_reinforcement and self.args.sharing_scheme_encoder:
+                kl_div = self.mac.compute_kl_div_agent(idx=idx)
+                kl_divs += kl_div
+            if not self.args.sharing_scheme_encoder and self.args.mutual_information_reinforcement:
+                z_idx = batch["z_idx"][:, t]
+                ce = self.mac.compute_kl_div_agent(idx=idx, z_idx=z_idx)
+                ce_losses += ce
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
-        if self.args.sharing_scheme_encoder:
-            kl_divs = th.stack(kl_divs, dim=1)[:, :-1]
-            if self.args.mutual_information_reinforcement:
-                ce_losses = th.stack(ce_losses, dim=1)[:, :-1]
+        kl_divs /= batch.max_seq_length
+        ce_losses /= batch.max_seq_length
         # (bs,t,n,n_actions), Q values of n_actions
 
         # Pick the Q-Values for the actions taken by each agent
@@ -238,15 +238,8 @@ class MetaQLearner:
         loss = td_error_loss
 
         if self.args.sharing_scheme_encoder:
-            kl_mask = copy.deepcopy(mask).expand_as(kl_divs)
-            masked_kl_div = kl_divs * kl_mask
-            kl_div_loss = masked_kl_div.sum() / kl_mask.sum()
-            loss += kl_div_loss
-
+            loss += kl_divs
         if self.args.mutual_information_reinforcement:
-            ce_mask = copy.deepcopy(mask).expand_as(ce_losses)
-            masked_ce_loss = ce_losses * ce_mask
-            ce_losses = masked_ce_loss.sum() / ce_mask.sum()
             loss += ce_losses
 
         # Optimise
@@ -260,7 +253,7 @@ class MetaQLearner:
             self.logger.log_stat("agent{}_policy_grad_norm".format(idx), grad_norm, t_env)
             mask_elems = td_mask.sum().item()
             if self.args.sharing_scheme_encoder:
-                self.logger.log_stat("agent{}_kl_div_abs".format(idx), kl_div_loss.abs().item(), t_env)
+                self.logger.log_stat("agent{}_kl_div_abs".format(idx), kl_divs.abs().item(), t_env)
             if self.args.mutual_information_reinforcement:
                 self.logger.log_stat("agent{}_ce_loss_abs".format(idx), ce_losses.abs().item(), t_env)
             self.logger.log_stat("agent{}_td_error_abs".format(idx), (masked_td_error.abs().sum().item() / mask_elems), t_env)
