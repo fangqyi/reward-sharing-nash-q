@@ -25,7 +25,7 @@ latent_relation_space_lower_bound: 0.0
 latent_var_dim: 2
 latent_encoder_hidden_sizes: [64, 64]
 pretrained_task_num: 32
-total_pretrain_steps: 2500000
+total_pretrain_steps: 1 # 2500000
 z_critic_lr: 0.001
 z_update_lr: 0.05
 
@@ -56,11 +56,11 @@ inference_net_hidden_sizes: [64, 64]
 load_pretrained_model: False
 
 # debug: test if deterministic sharing schemes improve performance
-deterministic_pretrained_tasks: False
+deterministic_pretrained_tasks: True
 div_num: 2
 
 # debug: hardcoded pretraining sharing schemes
-hardcoded_pretrained_tasks: True
+hardcoded_pretrained_tasks: False
 hardcoded_tasks_zp: [[0,10], [0,0]]
 hardcoded_tasks_zq: [[0,10], [0,0]]
 num_hc_pret_tasks: 2
