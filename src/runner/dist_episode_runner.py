@@ -57,8 +57,11 @@ class DistEpisodeRunner:
         self.env.reset()
         self.t = 0
 
-    def run(self, z_q, z_p, z_idx, test_mode=False, sample_return_mode=False, train_phase="pretrain"):  # run one eps
+    def run(self, z_q, z_p, z_idx=None, test_mode=False, sample_return_mode=False, train_phase="pretrain"):  # run one eps
         self.reset()
+
+        if z_idx is None:
+            z_idx = [[-1]]
 
         if isinstance(z_p, torch.Tensor):
             z_q = z_q.detach().cpu().numpy()
