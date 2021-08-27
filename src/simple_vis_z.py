@@ -12,7 +12,7 @@ z_q_0 = []
 z_q_1 = []
 
 for i in range(1, int(max_range)):
-    path = dir+"/"+str(max)+"0050/"
+    path = dir+"/"+str(i)+"0050/"
     f = open(path+"z_p/tensors.tsv", "r")
     z_p_0.append(int(f.readline()))
     z_p_1.append(int(f.readline()))
@@ -23,4 +23,4 @@ for i in range(1, int(max_range)):
 for idx in range(len(z_p_1)):
     print("agent (z_p, z_q): ({}, {}), ({}, {})".format(z_p_0, z_q_0, z_p_1, z_q_1))
 
-    
+
