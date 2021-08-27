@@ -53,7 +53,10 @@ obs_agent_id: False
 sharing_scheme_encoder: False
 mutual_information_reinforcement: False
 inference_net_hidden_sizes: [64, 64]
-load_pretrained_model: False
+
+# loading model from environment
+load_pretrained_model: True
+pretrained_model_load_path: "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_decentralized__2021-08-24_14-19-30/2407650"
 
 # debug: test if deterministic sharing schemes improve performance
 deterministic_pretrained_tasks: True

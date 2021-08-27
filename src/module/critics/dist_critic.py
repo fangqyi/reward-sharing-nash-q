@@ -81,23 +81,22 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
             layer_norm_params=None,
         )
 
-    def forward(self, batch, agent_id, latent_var, *args):
-        inputs = self._build_inputs(batch, agent_id, latent_var)
+    def forward(self, batch, latent_var, *args):
+        inputs = self._build_inputs(batch, latent_var)
         return self.critic(inputs)
 
-    def _build_inputs(self, batch, agent_id, latent_var):
+    def _build_inputs(self, batch, latent_var=None):
         # assume latent_state: [bs, latent_state_size]
         # obs: [bs, seq_len, n_agents, obs_size]
-        inputs = []
-
-        z_p_s = batch["z_p"][agent_id]  # [n_agents, space_dim]
-        z_q_s = batch["z_q"][agent_id]  # [n_agents, space_dim]
-        inputs.append(z_q_s)
-        inputs.append(z_p_s)
-        inputs.append(latent_var)
+        inputs = [batch["z_p"], batch["z_q"]]
+        if self.args.sharing_scheme_encoder:
+            inputs.append(latent_var)
 
         inputs = torch.cat([x.reshape(-1) for x in inputs], dim=-1)
         return inputs
 
     def _get_input_shape(self):
-        return self.args.latent_var_dim + self.args.latent_relation_space_dim * 2  # z_q, z_q
+        if self.args.sharing_scheme_encoder:
+            return self.args.latent_var_dim + self.args.latent_relation_space_dim * 2 * self.n_agents  # z_q, z_q
+        else:
+            return self.args.latent_relation_space_dim * 2 * self.n_agents
