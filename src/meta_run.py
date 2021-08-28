@@ -15,6 +15,8 @@ from utils.logging import Logger
 from utils.timehelper import time_left, time_str
 from os.path import dirname, abspath
 from torch.distributions.uniform import Uniform
+from torch.optim import Adam
+from torch.nn.utils import clip_grad_norm_
 
 from learner import REGISTRY as le_REGISTRY
 from runner import REGISTRY as r_REGISTRY
@@ -241,9 +243,13 @@ def run_distance_sequential(args, logger):
     env_steps_threshold = 0
 
     # initialize sharing scheme and its optimizer
-    z_p, z_q = sample_dist_norm(args, num=1)
-    params = [z_p, z_q]
-    z_optimiser = torch.optim.Adam(params=params, lr=args.z_update_lr, eps=args.optim_eps)
+    if not args.separate_agents:
+        z_p, z_q = sample_dist_norm(args, num=1, train=True)
+        params = [z_p, z_q]
+        z_optimiser = Adam(params=params, lr=args.z_update_lr, eps=args.optim_eps)
+    else:
+        z = sample_dist_norm(args, train=True)
+        z_optimisers = [Adam(params=z[idx], lr=args.z_update_lr, eps=args.optim_eps) for idx in range(args.n_agents)]
 
     device = "cpu" if args.buffer_cpu_only else args.device
     buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
@@ -257,7 +263,10 @@ def run_distance_sequential(args, logger):
         mac.init_epsilon_schedule(train_phase)
         while runner.t_env <= env_steps_threshold:
             # Run for a whole episode at a time
-
+            if args.separate_agents:
+                z_q, z_p = [z[idx][0] for idx in range(args.n_agents)], [z[idx][1] for idx in range(args.n_agents)]
+                z_q = torch.stack(z_q, dim=0)
+                z_p = torch.stack(z_p, dim=0)
             episode_batch = runner.run(z_q, z_p, test_mode=False, train_phase=train_phase)
             buffer.insert_episode_batch(episode_batch)
 
@@ -302,21 +311,26 @@ def run_distance_sequential(args, logger):
         learner.z_train(critic_train_batch, z_train_steps)
 
         # update z_q, z_p
-        total_val = - learner.get_social_welfare_z(critic_train_batch)
-        z_optimiser.zero_grad()
-        total_val.backward()
-        grad_norm = th.nn.utils.clip_grad_norm_(params, args.grad_norm_clip)
-        z_optimiser.step()
-
+        if not args.separate_agents:
+            total_val = - learner.get_social_welfare_z(critic_train_batch)
+            z_optimiser.zero_grad()
+            total_val.backward()
+            grad_norm = clip_grad_norm_(params, args.grad_norm_clip)
+            z_optimiser.step()
+        else:
+            total_val = [-x for x in learner.get_social_welfare_z(critic_train_batch)]
+            grad_norm = []
+            for idx in range(args.n_agents):
+                z_optimisers[idx].zero_grad()
+                total_val[idx].backward()
+                grad_norm.append(clip_grad_norm_(z[idx], args.grad_norm_clip))
+                z_optimisers[idx].step()
+            grad_norm = sum(grad_norm)/args.n_agents
         z_train_steps += 1
 
         t_max = args.env_steps_every_z * args.total_z_training_steps
         logger.log_stat("Estimated social welfare", - total_val.item(), runner.t_env)
         logger.log_stat("z_grad_norm", grad_norm, runner.t_env)
-        # logger.log_vec(tag="agent 0 z_p", mat=z_p[0], global_step=runner.t_env)
-        # logger.log_vec(tag="agent 0 z_q", mat=z_q[0], global_step=runner.t_env)
-        # logger.log_vec(tag="agent 1 z_p", mat=z_p[1], global_step=runner.t_env)
-        # logger.log_vec(tag="agent 1 z_q", mat=z_q[1], global_step=runner.t_env)
         logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
         logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
         logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
@@ -352,19 +366,19 @@ def run_distance_sequential(args, logger):
     logger.console_logger.info("Finished Training")
 
 
-def sample_dist_norm(args, num=None):
+def sample_dist_norm(args, num=None, train=False):
     # [(z_q, z_p)]: z_q: [n_agents][space_dim]
     lower = args.latent_relation_space_lower_bound
     upper = args.latent_relation_space_upper_bound
 
     size = torch.Size([args.n_agents, args.latent_relation_space_dim])
     dim_num = args.latent_relation_space_dim
-    if num is None:  # for pretrain
+    if num is None and not train:  # for pretrain
         distribution = Uniform(torch.tensor([lower], dtype=torch.float), torch.tensor([upper], dtype=torch.float))
         return [(distribution.sample(size).view(1, args.n_agents, dim_num),
                  distribution.sample(size).view(1, args.n_agents, dim_num))
                 for _ in range(args.pretrained_task_num)]
-    else:  # for train
+    elif not args.separate_agents:  # for train
         distribution = Uniform(torch.tensor([lower], dtype=torch.float).to(args.device),
                                torch.tensor([upper], dtype=torch.float).to(args.device))
         z = (
@@ -372,6 +386,15 @@ def sample_dist_norm(args, num=None):
             distribution.sample(size).view(args.n_agents, dim_num))
         z[0].requires_grad = True
         z[1].requires_grad = True
+        return z
+    else:
+        distribution = Uniform(torch.tensor([lower], dtype=torch.float).to(args.device),
+                               torch.tensor([upper], dtype=torch.float).to(args.device))
+        size = torch.Size([2, args.latent_relation_space_dim])
+        z = []
+        for idx in range(args.n_agents):
+            z.append(distribution.sample(size))
+            z[idx].requires_grad = True
         return z
 
 

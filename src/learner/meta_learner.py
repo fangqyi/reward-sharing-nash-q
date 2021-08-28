@@ -48,11 +48,19 @@ class MetaQLearner:
         if self.args.centralized_social_welfare:
             z_vals = self.z_critic(entry)
         else:
-            if self.args.sharing_scheme_encoder:
-                latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
-                z_vals = sum([self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)])
+            if not self.args.separate_agents:
+                if self.args.sharing_scheme_encoder:
+                    latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
+                    z_vals = sum([self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)])
+                else:
+                    z_vals = sum([self.z_critics[i](entry, i, None) for i in range(self.args.n_agents)])
             else:
-                z_vals = sum([self.z_critics[i](entry, i, None) for i in range(self.args.n_agents)])
+                if self.args.sharing_scheme_encoder:
+                    latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
+                    z_vals = [self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)]
+                else:
+                    z_vals = [self.z_critics[i](entry, i, None) for i in range(self.args.n_agents)]
+
         return z_vals
 
     def z_train(self, entry, t_env):
