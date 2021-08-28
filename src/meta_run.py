@@ -371,8 +371,8 @@ def sample_dist_norm(args, num=None, train=False):
     lower = args.latent_relation_space_lower_bound
     upper = args.latent_relation_space_upper_bound
 
-    size = torch.Size([args.n_agents, args.latent_relation_space_dim])
     dim_num = args.latent_relation_space_dim
+    size = torch.Size([args.n_agents, dim_num])
     if num is None and not train:  # for pretrain
         distribution = Uniform(torch.tensor([lower], dtype=torch.float), torch.tensor([upper], dtype=torch.float))
         return [(distribution.sample(size).view(1, args.n_agents, dim_num),
@@ -390,10 +390,10 @@ def sample_dist_norm(args, num=None, train=False):
     else:
         distribution = Uniform(torch.tensor([lower], dtype=torch.float).to(args.device),
                                torch.tensor([upper], dtype=torch.float).to(args.device))
-        size = torch.Size([2, args.latent_relation_space_dim])
+        size = torch.Size([2, dim_num])
         z = []
         for idx in range(args.n_agents):
-            z.append(distribution.sample(size).view(dim_num))
+            z.append(distribution.sample(size).view(2, dim_num))
             z[idx].requires_grad = True
         return z
 
