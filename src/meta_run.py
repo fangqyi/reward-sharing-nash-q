@@ -249,7 +249,7 @@ def run_distance_sequential(args, logger):
         z_optimiser = Adam(params=params, lr=args.z_update_lr, eps=args.optim_eps)
     else:
         z = sample_dist_norm(args, train=True)
-        z_optimisers = [Adam(params=z[idx], lr=args.z_update_lr, eps=args.optim_eps) for idx in range(args.n_agents)]
+        z_optimisers = [Adam(params=[z[idx]], lr=args.z_update_lr, eps=args.optim_eps) for idx in range(args.n_agents)]
 
     device = "cpu" if args.buffer_cpu_only else args.device
     buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
