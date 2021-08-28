@@ -393,7 +393,7 @@ def sample_dist_norm(args, num=None, train=False):
         size = torch.Size([2, args.latent_relation_space_dim])
         z = []
         for idx in range(args.n_agents):
-            z.append(distribution.sample(size))
+            z.append(distribution.sample(size).view(dim_num))
             z[idx].requires_grad = True
         return z
 
