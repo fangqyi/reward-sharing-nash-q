@@ -48,20 +48,20 @@ class MetaQLearner:
         if self.args.centralized_social_welfare:
             z_vals = self.z_critic(entry)
         else:
-            if not self.args.separate_agents:
-                if self.args.sharing_scheme_encoder:
-                    latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
-                    z_vals = sum([self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)])
-                else:
-                    z_vals = sum([self.z_critics[i](entry, i, None) for i in range(self.args.n_agents)])
+            if self.args.sharing_scheme_encoder:
+                latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
+                z_vals = sum([self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)])
             else:
-                if self.args.sharing_scheme_encoder:
-                    latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
-                    z_vals = [self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)]
-                else:
-                    z_vals = [self.z_critics[i](entry, i, None) for i in range(self.args.n_agents)]
-
+                z_vals = sum([self.z_critics[i](entry, i, None) for i in range(self.args.n_agents)])
         return z_vals
+
+    def get_agent_critic_estimate(self, entry, idx):
+        if self.args.sharing_scheme_encoder:
+            latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
+            z_val = self.z_critics[idx](entry, idx, latent_vars)
+        else:
+            z_val = self.z_critics[idx](entry, idx, None)
+        return z_val
 
     def z_train(self, entry, t_env):
         # train critic
