@@ -324,7 +324,7 @@ def run_distance_sequential(args, logger):
                 val = - learner.get_agent_critic_estimate(critic_train_batch, idx)
                 total_val += val
                 z_optimisers[idx].zero_grad()
-                val.backward()
+                val.backward(retain_graph=True)
                 grad_norm.append(clip_grad_norm_(z[idx], args.grad_norm_clip))
                 z_optimisers[idx].step()
             grad_norm = sum(grad_norm)/args.n_agents
