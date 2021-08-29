@@ -78,7 +78,7 @@ class MetaQLearner:
 
         self.logger.log_stat("z_critic_loss", z_critic_loss.item(), t_env)
         self.z_critic_optimiser.zero_grad()
-        z_critic_loss.backward()
+        z_critic_loss.backward(retain_graph=True)  # ?
         grad_norm = th.nn.utils.clip_grad_norm_(self.z_critic_params, self.args.grad_norm_clip)  # max_norm
         self.z_critic_optimiser.step()
 
