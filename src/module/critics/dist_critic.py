@@ -81,14 +81,14 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
             layer_norm_params=None,
         )
 
-    def forward(self, batch, latent_var, *args):
+    def forward(self, batch, latent_var=None, z_idx=None, *args):
         inputs = self._build_inputs(batch, latent_var)
         return self.critic(inputs)
 
-    def _build_inputs(self, batch, latent_var=None):
+    def _build_inputs(self, batch, latent_var=None, z_idx=None):
         # assume latent_state: [bs, latent_state_size]
         # obs: [bs, seq_len, n_agents, obs_size]
-        inputs = [batch["z_p"].clone(), batch["z_q"].clone()]
+        inputs = [batch["z_p"], batch["z_q"], z_idx]
         if self.args.sharing_scheme_encoder:
             inputs.append(latent_var)
 
@@ -96,7 +96,10 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
         return inputs
 
     def _get_input_shape(self):
+        shape = self.args.latent_var_dim + self.args.latent_relation_space_dim * 2 * self.n_agents
         if self.args.sharing_scheme_encoder:
-            return self.args.latent_var_dim + self.args.latent_relation_space_dim * 2 * self.n_agents  # z_q, z_q
-        else:
-            return self.args.latent_relation_space_dim * 2 * self.n_agents
+            shape += self.args.latent_var_dim  # z_q, z_q
+        if self.args.separate_agents:
+            shape += self.args.self.args.latent_relation_space_dim * 2
+        return shape
+    

@@ -265,8 +265,8 @@ def run_distance_sequential(args, logger):
             # Run for a whole episode at a time
             if args.separate_agents:
                 z_q, z_p = [z[idx][0] for idx in range(args.n_agents)], [z[idx][1] for idx in range(args.n_agents)]
-                z_q = torch.stack(z_q, dim=0)
-                z_p = torch.stack(z_p, dim=0)
+                z_q = torch.stack(z_q, dim=0).detach()
+                z_p = torch.stack(z_p, dim=0).detach()
             episode_batch = runner.run(z_q, z_p, test_mode=False, train_phase=train_phase)
             buffer.insert_episode_batch(episode_batch)
 
@@ -321,7 +321,7 @@ def run_distance_sequential(args, logger):
             grad_norm = []
             total_val = torch.tensor(0.0).view(1).to(args.device)
             for idx in range(args.n_agents):
-                val = - learner.get_agent_critic_estimate(critic_train_batch, idx)
+                val = - learner.get_agent_critic_estimate(critic_train_batch, idx, z[idx])
                 # val = - learner.get_agent_critic_estimate(z[idx], idx)
                 total_val += val
                 z_optimisers[idx].zero_grad()
