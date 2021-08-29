@@ -321,8 +321,8 @@ def run_distance_sequential(args, logger):
             grad_norm = []
             total_val = torch.tensor(0.0).view(1).to(args.device)
             for idx in range(args.n_agents):
-                # val = - learner.get_agent_critic_estimate(critic_train_batch, idx)
-                val = - learner.get_agent_critic_estimate(z[idx], idx)
+                val = - learner.get_agent_critic_estimate(critic_train_batch, idx)
+                # val = - learner.get_agent_critic_estimate(z[idx], idx)
                 total_val += val
                 z_optimisers[idx].zero_grad()
                 val.backward(retain_graph=True)
