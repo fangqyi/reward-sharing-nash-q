@@ -308,7 +308,7 @@ def run_distance_sequential(args, logger):
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"]) / args.z_sample_runs
         else:
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"], dim=0) / args.z_sample_runs
-        learner.z_train(critic_train_batch, z_train_steps)
+        learner.z_train(critic_train_batch, z_train_steps, z)
 
         # update z_q, z_p
         if not args.separate_agents:

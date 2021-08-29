@@ -63,7 +63,7 @@ class MetaQLearner:
             z_val = self.z_critics[idx](entry, idx, None, z_idx)
         return z_val
 
-    def z_train(self, entry, t_env):
+    def z_train(self, entry, t_env, z):
         # train critic
         if self.args.centralized_social_welfare:
             z_vals = self.z_critic(entry)
@@ -73,7 +73,7 @@ class MetaQLearner:
                 latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
                 z_vals = [self.z_critics[i](entry, latent_vars) for i in range(self.args.n_agents)]
             else:
-                z_vals = [self.z_critics[i](entry, None) for i in range(self.args.n_agents)]
+                z_vals = [self.z_critics[i](entry, None, z[i]) for i in range(self.args.n_agents)]
             z_critic_loss = sum([(z_vals[i] - entry["evals"][i])**2 for i in range(self.args.n_agents)])
 
         self.logger.log_stat("z_critic_loss", z_critic_loss.item(), t_env)
