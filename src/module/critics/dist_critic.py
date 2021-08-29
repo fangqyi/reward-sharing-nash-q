@@ -82,7 +82,7 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
         )
 
     def forward(self, batch, latent_var=None, z_idx=None, *args):
-        inputs = self._build_inputs(batch, latent_var)
+        inputs = self._build_inputs(batch, latent_var, z_idx)
         return self.critic(inputs)
 
     def _build_inputs(self, batch, latent_var=None, z_idx=None):
