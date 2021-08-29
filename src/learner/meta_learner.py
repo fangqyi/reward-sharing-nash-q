@@ -58,9 +58,9 @@ class MetaQLearner:
     def get_agent_critic_estimate(self, entry, idx, z_idx):
         if self.args.sharing_scheme_encoder:
             latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
-            z_val = self.z_critics[idx](entry, idx, latent_vars)
+            z_val = self.z_critics[idx](entry, latent_vars)
         else:
-            z_val = self.z_critics[idx](entry, idx, None, z_idx)
+            z_val = self.z_critics[idx](entry, None, z_idx)
         return z_val
 
     def z_train(self, entry, t_env, z):
