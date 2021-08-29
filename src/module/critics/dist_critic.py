@@ -100,6 +100,5 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
         if self.args.sharing_scheme_encoder:
             shape += self.args.latent_var_dim  # z_q, z_q
         if self.args.separate_agents:
-            shape += self.args.self.args.latent_relation_space_dim * 2
+            shape += self.args.latent_relation_space_dim * 2
         return shape
-    
