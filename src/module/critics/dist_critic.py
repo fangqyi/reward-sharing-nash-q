@@ -88,7 +88,7 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
     def _build_inputs(self, batch, latent_var=None):
         # assume latent_state: [bs, latent_state_size]
         # obs: [bs, seq_len, n_agents, obs_size]
-        inputs = [batch["z_p"], batch["z_q"]]
+        inputs = [batch["z_p"].clone(), batch["z_q"].clone()]
         if self.args.sharing_scheme_encoder:
             inputs.append(latent_var)
 
