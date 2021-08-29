@@ -96,7 +96,7 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
         return inputs
 
     def _get_input_shape(self):
-        shape = self.args.latent_var_dim + self.args.latent_relation_space_dim * 2 * self.n_agents
+        shape = self.args.latent_relation_space_dim * 2 * self.n_agents
         if self.args.sharing_scheme_encoder:
             shape += self.args.latent_var_dim  # z_q, z_q
         if self.args.separate_agents:
