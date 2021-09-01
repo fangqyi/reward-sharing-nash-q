@@ -328,7 +328,7 @@ def run_distance_sequential(args, logger):
                 val.backward(retain_graph=True)
                 grad_norm.append(clip_grad_norm_(z[idx], args.grad_norm_clip))
                 z_optimisers[idx].step()
-                z[idx] = torch.clamp(z[idx],
+                z[idx] = torch.clamp(z[idx].data,
                                      min=args.latent_relation_space_lower_bound,
                                      max=args.latent_relation_space_upper_bound)
             grad_norm = sum(grad_norm)/args.n_agents
