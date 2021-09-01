@@ -325,7 +325,7 @@ def run_distance_sequential(args, logger):
                 # val = - learner.get_agent_critic_estimate(z[idx], idx)
                 total_val += val
                 z_optimisers[idx].zero_grad()
-                val.backward(retain_graph=True)
+                val.backward()
                 grad_norm.append(clip_grad_norm_(z[idx], args.grad_norm_clip))
                 z_optimisers[idx].step()
                 z[idx] = torch.clamp(z[idx].data,
