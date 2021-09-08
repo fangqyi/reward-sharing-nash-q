@@ -261,12 +261,14 @@ def run_distance_sequential(args, logger):
 
         env_steps_threshold += args.env_steps_every_z
         mac.init_epsilon_schedule(train_phase)
+        if args.separate_agents:
+            z_q, z_p = [z[idx][0] for idx in range(args.n_agents)], [z[idx][1] for idx in range(args.n_agents)]
+            z_q = torch.stack(z_q, dim=0).detach()
+            z_p = torch.stack(z_p, dim=0).detach()
+
         while runner.t_env <= env_steps_threshold:
             # Run for a whole episode at a time
-            if args.separate_agents:
-                z_q, z_p = [z[idx][0] for idx in range(args.n_agents)], [z[idx][1] for idx in range(args.n_agents)]
-                z_q = torch.stack(z_q, dim=0).detach()
-                z_p = torch.stack(z_p, dim=0).detach()
+
             episode_batch = runner.run(z_q, z_p, test_mode=False, train_phase=train_phase)
             buffer.insert_episode_batch(episode_batch)
 
@@ -307,6 +309,7 @@ def run_distance_sequential(args, logger):
             # calculate the average performance
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"]) / args.z_sample_runs
         else:
+            print(critic_train_batch["evals"].shape)
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"], dim=0) / args.z_sample_runs
         learner.z_train(critic_train_batch, z_train_steps, z)
 
@@ -322,15 +325,14 @@ def run_distance_sequential(args, logger):
             total_val = torch.tensor(0.0).view(1).to(args.device)
             for idx in range(args.n_agents):
                 val = - learner.get_agent_critic_estimate(critic_train_batch, idx, z[idx])
-                # val = - learner.get_agent_critic_estimate(z[idx], idx)
                 total_val += val
                 z_optimisers[idx].zero_grad()
                 val.backward()
                 grad_norm.append(clip_grad_norm_(z[idx], args.grad_norm_clip))
                 z_optimisers[idx].step()
-                z[idx] = torch.clamp(z[idx].data,
-                                     min=args.latent_relation_space_lower_bound,
-                                     max=args.latent_relation_space_upper_bound)
+                # z[idx] = torch.clamp(z[idx].data,
+                #                      min=args.latent_relation_space_lower_bound,
+                #                      max=args.latent_relation_space_upper_bound)
             grad_norm = sum(grad_norm)/args.n_agents
         z_train_steps += 1
 
