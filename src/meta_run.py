@@ -295,7 +295,7 @@ def run_distance_sequential(args, logger):
                 runner.run(z_q, z_p, test_mode=True, sample_return_mode=True, train_phase=train_phase))
 
         data = {"z_p": z_p, "z_q": z_q, "evals": episode_returns}
-
+        print(episode_returns)
         critic_train_batch = {}
         for k, v in data.items():
             if not isinstance(v, th.Tensor):
@@ -303,13 +303,13 @@ def run_distance_sequential(args, logger):
             else:
                 v.to(args.device)
             critic_train_batch.update({k: v})
+        print(critic_train_batch["evals"].shape)
 
         # train z critic
         if args.centralized_social_welfare:
             # calculate the average performance
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"]) / args.z_sample_runs
         else:
-            print(critic_train_batch["evals"].shape)
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"], dim=0) / args.z_sample_runs
         learner.z_train(critic_train_batch, z_train_steps, z)
 
