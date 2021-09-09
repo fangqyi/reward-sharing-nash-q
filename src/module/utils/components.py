@@ -12,6 +12,9 @@ class MLPMultiGaussianEncoder(nn.Module):
                  input_size,
                  output_size,
                  mlp_hidden_sizes,
+                 sample_clamped=False,
+                 clamp_upper_bound=None,
+                 clamp_lower_bound=None,
                  mlp_init_w=3e-3,
                  mlp_hidden_activation=F.leaky_relu,
                  mlp_output_activation=identity,
@@ -37,8 +40,13 @@ class MLPMultiGaussianEncoder(nn.Module):
         self.use_information_bottleneck = use_information_bottleneck
         self.input_size = input_size
         self.output_size = output_size
+        self.sample_clamped=sample_clamped,
+        self.clamp_upper_bound=clamp_upper_bound,
+        self.clamp_lower_bound=clamp_lower_bound,
         self.z_means = None
         self.z_vars = None
+        self.z = None
+        self.prob_z = None
 
     def infer_posterior(self, inputs):
         self.forward(inputs)
@@ -48,8 +56,11 @@ class MLPMultiGaussianEncoder(nn.Module):
         if self.use_information_bottleneck:
             posteriors = D.Normal(self.z_means, torch.sqrt(self.z_vars))
             self.z = posteriors.rsample()
+            self.prob_z = posteriors.log_prob(self.z)
         else:
             self.z = self.z_means
+        if self.sample_clamped:
+            self.z[:] = self.z.clamp(self.clamp_lower_bound, self.clamp_upper_bound)  # TODO: double check if it cancels gradient at border
 
     def forward(self, input):
         params = self.mlp(input)  #[batch_size, 2*output_size]

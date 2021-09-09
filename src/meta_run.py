@@ -244,11 +244,11 @@ def run_distance_sequential(args, logger):
 
     # initialize sharing scheme and its optimizer
     if not args.separate_agents:
-        z_p, z_q = sample_dist_norm(args, num=1, train=True)
+        z_p, z_q = sample_dist_norm(args, train=True, autograd=True)
         params = [z_p, z_q]
         z_optimiser = Adam(params=params, lr=args.z_update_lr, eps=args.optim_eps)
     else:
-        z = sample_dist_norm(args, train=True)
+        z = sample_dist_norm(args, train=True, autograd=True)
         z_optimisers = [Adam(params=[z[idx]], lr=args.z_update_lr, eps=args.optim_eps) for idx in range(args.n_agents)]
 
     device = "cpu" if args.buffer_cpu_only else args.device
@@ -295,15 +295,13 @@ def run_distance_sequential(args, logger):
                 runner.run(z_q, z_p, test_mode=True, sample_return_mode=True, train_phase=train_phase))
 
         data = {"z_p": z_p, "z_q": z_q, "evals": episode_returns}
-        print(episode_returns)
         critic_train_batch = {}
         for k, v in data.items():
             if not isinstance(v, th.Tensor):
-                v = th.tensor(v, dtype=th.long, device=args.device)
+                v = th.tensor(v, dtype=th.float, device=args.device)
             else:
                 v.to(args.device)
             critic_train_batch.update({k: v})
-        print(critic_train_batch["evals"].shape)
 
         # train z critic
         if args.centralized_social_welfare:
@@ -311,11 +309,11 @@ def run_distance_sequential(args, logger):
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"]) / args.z_sample_runs
         else:
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"], dim=0) / args.z_sample_runs
-        learner.z_train(critic_train_batch, z_train_steps, z)
+        learner.z_critic_train(critic_train_batch, z_train_steps, z)
 
         # update z_q, z_p
         if not args.separate_agents:
-            total_val = - learner.get_social_welfare_z(critic_train_batch)
+            total_val = - learner.get_welfare_estimate(critic_train_batch)
             z_optimiser.zero_grad()
             total_val.backward()
             grad_norm = clip_grad_norm_(params, args.grad_norm_clip)
@@ -335,6 +333,33 @@ def run_distance_sequential(args, logger):
                 #                      max=args.latent_relation_space_upper_bound)
             grad_norm = sum(grad_norm)/args.n_agents
         z_train_steps += 1
+
+        if args.separate_agents:
+            z_q, z_p = [z[idx][0] for idx in range(args.n_agents)], [z[idx][1] for idx in range(args.n_agents)]
+            z_q = torch.stack(z_q, dim=0).detach()
+            z_p = torch.stack(z_p, dim=0).detach()
+
+        # in the desperation to understand what is going on
+        def softmax(vector):
+            import math
+            e = [math.exp(x) for x in vector]
+            return [x / sum(e) for x in e]
+
+        def distance(a, b):
+            import numpy
+            ret = numpy.linalg.norm(a - b, ord=2)
+            return ret
+
+        z_q_cp = z_q.clone().detach().cpu().numpy()
+        z_p_cp = z_p.clone().detach().cpu().numpy()
+        dist = []
+        for giver in range(args.n_agents):
+            dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
+
+        for receiver in range(args.n_agents):
+            for giver in range(args.n_agents):
+                logger.log_stat("giver agent {} to receiver agent {}".format(giver, receiver), dist[giver][receiver],
+                                runner.t_env)
 
         t_max = args.env_steps_every_z * args.total_z_training_steps
         logger.log_stat("Estimated social welfare", - total_val.item(), runner.t_env)
@@ -359,9 +384,7 @@ def run_distance_sequential(args, logger):
             os.makedirs(save_path, exist_ok=True)
             logger.console_logger.info("Saving models to {}".format(save_path))
 
-            # learner should handle saving/loading -- delegate actor save/load to mac,
-            # use appropriate filenames to do critics, optimizer states
-            learner.save_models(save_path)
+            learner.save_models(save_path, train=True)  # FIXME: not saving opt for sharing scheme
 
         episode += args.batch_size_run
 
@@ -374,36 +397,39 @@ def run_distance_sequential(args, logger):
     logger.console_logger.info("Finished Training")
 
 
-def sample_dist_norm(args, num=None, train=False):
+def sample_dist_norm(args, train=False, autograd=False):
     # [(z_q, z_p)]: z_q: [n_agents][space_dim]
-    lower = args.latent_relation_space_lower_bound
-    upper = args.latent_relation_space_upper_bound
+    l = torch.tensor([args.latent_relation_space_lower_bound], dtype=torch.float)
+    u = torch.tensor([args.latent_relation_space_upper_bound], dtype=torch.float)
+    if autograd:  # weird fix
+        l.to(args.device)
+        u.to(args.device)
+    d = Uniform(low=l, high=u)
 
     dim_num = args.latent_relation_space_dim
-    size = torch.Size([args.n_agents, dim_num])
-    if num is None and not train:  # for pretrain
-        distribution = Uniform(torch.tensor([lower], dtype=torch.float), torch.tensor([upper], dtype=torch.float))
-        return [(distribution.sample(size).view(1, args.n_agents, dim_num),
-                 distribution.sample(size).view(1, args.n_agents, dim_num))
-                for _ in range(args.pretrained_task_num)]
-    elif not args.separate_agents:  # for train
-        distribution = Uniform(torch.tensor([lower], dtype=torch.float).to(args.device),
-                               torch.tensor([upper], dtype=torch.float).to(args.device))
+
+    # sample for meta-training
+    if not train:
+        size = torch.Size([args.n_agents, dim_num])
+        return [(d.sample(size).view(1, args.n_agents, dim_num),
+                 d.sample(size).view(1, args.n_agents, dim_num)) for _ in range(args.pretrained_task_num)]
+
+    # sample for training
+    if not args.separate_agents:
+        size = torch.Size([args.n_agents, dim_num])
         z = (
-            distribution.sample(size).view(args.n_agents, dim_num),
-            distribution.sample(size).view(args.n_agents, dim_num))
-        z[0].requires_grad = True
-        z[1].requires_grad = True
-        return z
+            d.sample(size).view(args.n_agents, dim_num),
+            d.sample(size).view(args.n_agents, dim_num))
+        z[0].requires_grad = autograd
+        z[1].requires_grad = autograd
     else:
-        distribution = Uniform(torch.tensor([lower], dtype=torch.float).to(args.device),
-                               torch.tensor([upper], dtype=torch.float).to(args.device))
         size = torch.Size([2, dim_num])
         z = []
         for idx in range(args.n_agents):
-            z.append(distribution.sample(size).view(2, dim_num))
-            z[idx].requires_grad = True
-        return z
+            z.append(d.sample(size).view(2, dim_num))
+            z[idx].requires_grad = autograd
+
+    return z
 
 
 # test on simple hardcoded example

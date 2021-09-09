@@ -54,6 +54,10 @@ sharing_scheme_encoder: False
 mutual_information_reinforcement: False
 inference_net_hidden_sizes: [64, 64]
 
+# optimize sharing scheme in training:
+critic_gradient_update: False
+critic_actor_update: True
+
 # loading model from environment
 load_pretrained_model: True
 pretrained_model_load_path: "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_decentralized__2021-08-24_14-19-30/2407650"

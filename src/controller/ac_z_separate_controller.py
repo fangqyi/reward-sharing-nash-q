@@ -1,0 +1,77 @@
+import torch as th
+
+from module.utils import MLPMultiGaussianEncoder
+
+
+class ZACSeparateMAC:
+    def __init__(self, scheme, groups, args):
+        self.n_agents = args.n_agents
+        self.args = args
+        self.scheme = scheme
+        self.z_p_actors = [MLPMultiGaussianEncoder(input_size=args.latent_relation_space_dim * args.n_agents,
+                                                   output_size=args.latent_relation_space_dim,
+                                                   mlp_hidden_sizes=args.latent_encoder_hidden_sizes,
+                                                   sample_clamped=True,
+                                                   clamp_lower_bound=args.latent_relation_space_lower_bound,
+                                                   clamp_upper_bound=args.latent_relation_space_upper_bound)
+                           for _ in range(self.args.n_agents)]
+        self.z_q_actors = [MLPMultiGaussianEncoder(input_size=(args.latent_relation_space_dim * args.n_agents
+                                                               + args.latent_relation_space_dim),
+                                                   output_size=args.latent_relation_space_dim,
+                                                   mlp_hidden_sizes=args.latent_encoder_hidden_sizes,
+                                                   sample_clamped=True,
+                                                   clamp_lower_bound=args.latent_relation_space_lower_bound,
+                                                   clamp_upper_bound=args.latent_relation_space_upper_bound)
+                           for _ in range(self.args.n_agents)]
+
+    def forward(self, data):
+        z_p, prob_z_p, z_q, prob_z_q = [], [], [], []
+        for i in range(self.n_agents):
+            z_p_i, prob_z_p_i, z_q_i, prob_z_q_i = self.forward_agent(data, i)
+            z_p.append(z_p_i)
+            z_q.append(z_q_i)
+            prob_z_p.append(prob_z_p_i)
+            prob_z_q.append(prob_z_q_i)
+        return th.stack(z_p, dim=0), th.stack(prob_z_p, dim=0), th.stack(z_q, dim=0), th.stack(prob_z_q, dim=0)
+
+    def forward_agent(self, data, idx):
+        z_p_inputs = self._build_z_p_input(data)
+        self.z_p_actors[idx](z_p_inputs)
+        z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z)
+        self.z_q_actors[idx](z_q_inputs)
+        return self.z_p_actors[idx].z, self.z_p_actors[idx].prob_z, self.z_q_actors[idx].z, self.z_q_actors[idx].prob_z
+
+    def parameters(self):
+        return [list(self.z_p_actors[i].parameters()) + list(self.z_q_actors[i].parameters()) for i in range(self.n_agents)]
+
+    def load_state(self, other_mac):
+        for idx in range(self.n_agents):
+            self.z_p_actors[idx].load_state_dict(other_mac.latent_encoders[idx].state_dict())
+            self.z_q_actors[idx].load_state_dict(other_mac.latent_encoders[idx].state_dict())
+
+    def cuda(self):
+        for idx in range(self.n_agents):
+            self.z_p_actors[idx].cuda()
+            self.z_q_actors[idx].cuda()
+
+    def save_models(self, path):
+        for idx in range(self.n_agents):
+            th.save(self.z_p_actors[idx].state_dict(), "{}/z_p_actor{}.th".format(path, idx))
+            th.save(self.z_q_actors[idx].state_dict(), "{}/z_q_actor{}.th".format(path, idx))
+
+    def load_models(self, path):
+        for idx in range(self.n_agents):
+            self.z_p_actors[idx].load_state_dict(
+                th.load("{}/z_p_actor{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+            self.z_q_actors[idx].load_state_dict(
+                th.load("{}/z_q_actor{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+
+    def _build_z_p_input(self, data):
+        inputs = [data["z_p"], data["z_q"]]
+        inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
+        return inputs
+
+    def _build_z_q_input(self, data, z_p):
+        inputs = [data["z_p"], data["z_q"], z_p]
+        inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
+        return inputs

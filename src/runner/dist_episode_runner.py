@@ -75,8 +75,8 @@ class DistEpisodeRunner:
             z_p_cp = z_p
 
         terminated = False
-        episode_return = [0] * self.n_agents
-        distributed_return = [0] * self.n_agents
+        r_acc = [0] * self.n_agents
+        distributed_r_acc = [0] * self.n_agents
         self.mac.init_hidden(batch_size=self.batch_size)
 
         while not terminated:
@@ -107,24 +107,25 @@ class DistEpisodeRunner:
             actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
 
             rewards, terminated, env_info = self.env.step(actions[0])
-            distributed_rewards = [0] * self.n_agents
+            distributed_r = [0] * self.n_agents
 
             # calculate distance
             dist = []
             for giver in range(self.n_agents):
                 dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(self.n_agents)]))
 
+            # sharing
             for receiver in range(self.n_agents):
                 for giver in range(self.n_agents):
-                    distributed_rewards[receiver] += dist[giver][receiver] * rewards[giver]
+                    distributed_r[receiver] += dist[giver][receiver] * rewards[giver]
 
-            episode_return = [episode_return[idx] + rewards[idx] for idx in range(self.n_agents)]
-            distributed_return = [distributed_return[idx] + distributed_rewards[idx] for idx in range(self.n_agents)]
+            r_acc = [r_acc[idx] + rewards[idx] for idx in range(self.n_agents)]
+            distributed_r_acc = [distributed_r_acc[idx] + distributed_r[idx] for idx in range(self.n_agents)]
 
             post_transition_data = {
                 "actions": actions,
                 "rewards": rewards,
-                "redistributed_rewards": distributed_rewards,
+                "redistributed_rewards": distributed_r,
                 "terminated": [(terminated,)],
             }
 
@@ -173,8 +174,8 @@ class DistEpisodeRunner:
         if not test_mode:
             self.t_env += self.t
 
-        cur_returns.append(episode_return)
-        cur_dis_returns.append(distributed_return)
+        cur_returns.append(r_acc)
+        cur_dis_returns.append(distributed_r_acc)
         if test_mode and (len(self.test_returns) == self.args.test_nepisode):
             self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase, z_q_cp, z_p_cp)
         elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:
@@ -185,7 +186,7 @@ class DistEpisodeRunner:
 
         if sample_return_mode:
             # return return (for training)
-            return distributed_return
+            return distributed_r_acc
         else:
             # return sample batch
             return self.batch
