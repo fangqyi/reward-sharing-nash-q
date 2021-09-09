@@ -120,6 +120,7 @@ class SeparateMAC:
         self.agent_output_type = self.args.agent_output_type
         self.agents = [agent_REGISTRY[self.args.agent](self.args, self.scheme) for _ in range(self.n_agents)]
         self.action_selector = EpsilonGreedyActionSelector(self.args, self.train_phase)
+        self.hidden_states = []
 
     def _build_inputs(self, batch, t):
         bs = batch.batch_size
