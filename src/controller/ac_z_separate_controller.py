@@ -72,7 +72,7 @@ class ZACSeparateMAC:
     def _build_z_p_input(self, data):
         inputs = [data["z_p"], data["z_q"]]
         inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
-        print(inputs.device)
+        print(data["z_p"].device)
         return inputs
 
     def _build_z_q_input(self, data, z_p):
