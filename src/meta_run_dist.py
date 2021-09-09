@@ -308,8 +308,8 @@ def run_distance_sequential(args, logger):
                                 runner.t_env)
 
         t_max = args.env_steps_every_z * args.total_z_training_steps
-        logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
-        logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
+        logger.log_vec(tag="z_p", mat=z_p[0], global_step=runner.t_env)
+        logger.log_vec(tag="z_q", mat=z_q[0], global_step=runner.t_env)
         logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
 
         if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
