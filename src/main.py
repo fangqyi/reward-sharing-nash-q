@@ -2,23 +2,22 @@
 Code adapted from https://github.com/TonghanWang/ROMA
 """
 
-import numpy as np
-import os
 import collections
-from os.path import dirname, abspath
+import os
+import sys
 from copy import deepcopy
+from os.path import dirname, abspath
 
-import torch
+import numpy as np
+import torch as th
+import yaml
 from sacred import Experiment, SETTINGS
 from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
-import sys
-import torch as th
-from utils.logging import get_logger
-import yaml
 
 # from run import run
 from meta_run import run
+from utils.logging import get_logger
 
 SETTINGS['CAPTURE_MODE'] = "fd" # set to "no" if you want to see stdout/stderr in console
 logger = get_logger()
