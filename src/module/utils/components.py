@@ -27,7 +27,7 @@ class MLPMultiGaussianEncoder(nn.Module):
         super(MLPMultiGaussianEncoder, self).__init__()
         self.mlp = FlattenMLP(
             input_size=input_size,
-            output_size=2*output_size if use_information_bottleneck else output_size,  # vars + means
+            output_size=2 * output_size if use_information_bottleneck else output_size,  # vars + means
             hidden_sizes=mlp_hidden_sizes,
             init_w=mlp_init_w,
             hidden_activation=mlp_hidden_activation,
@@ -40,9 +40,9 @@ class MLPMultiGaussianEncoder(nn.Module):
         self.use_information_bottleneck = use_information_bottleneck
         self.input_size = input_size
         self.output_size = output_size
-        self.sample_clamped=sample_clamped,
-        self.clamp_upper_bound=clamp_upper_bound,
-        self.clamp_lower_bound=clamp_lower_bound,
+        self.sample_clamped = sample_clamped
+        self.clamp_upper_bound = clamp_upper_bound
+        self.clamp_lower_bound = clamp_lower_bound
         self.z_means = None
         self.z_vars = None
         self.z = None
@@ -60,10 +60,11 @@ class MLPMultiGaussianEncoder(nn.Module):
         else:
             self.z = self.z_means
         if self.sample_clamped:
-            self.z[:] = self.z.clamp(self.clamp_lower_bound, self.clamp_upper_bound)  # TODO: double check if it cancels gradient at border
+            self.z[:] = self.z.clamp(self.clamp_lower_bound,
+                                     self.clamp_upper_bound)  # TODO: double check if it cancels gradient at border
 
     def forward(self, input):
-        params = self.mlp(input)  #[batch_size, 2*output_size]
+        params = self.mlp(input)  # [batch_size, 2*output_size]
         if self.use_information_bottleneck:
             self.z_means = params[..., :self.output_size]
             self.z_vars = F.softplus(params[..., self.output_size:])
@@ -79,7 +80,7 @@ class MLPMultiGaussianEncoder(nn.Module):
     def compute_kl_div(self):
         device = self.z_means[0].device
         prior = D.Normal(torch.zeros(self.output_size).to(device),
-                                           torch.ones(self.output_size).to(device))
+                         torch.ones(self.output_size).to(device))
         post = D.Normal(self.z_means, torch.sqrt(self.z_vars))
         kl_divs = kl_divergence(post, prior).sum(dim=-1).mean()
         return kl_divs
@@ -146,6 +147,7 @@ class MLP(nn.Module):
         else:
             return output
 
+
 class SoftmaxMLP(MLP):
     def __init__(self,
                  input_size,
@@ -178,6 +180,7 @@ class SoftmaxMLP(MLP):
             output = F.softmax(output, dim=-1)
         return output
 
+
 class FlattenMLP(MLP):
     """
     if there are multiple inputs, concatenate along dim 1
@@ -187,7 +190,7 @@ class FlattenMLP(MLP):
         flat_inputs = torch.cat(inputs, dim=1)
         return super().forward(flat_inputs, **kwargs)
 
+
 class MLPEncoder(FlattenMLP):
     def reset(self, num_task=1):
         pass
-
