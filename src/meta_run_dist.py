@@ -265,21 +265,17 @@ def run_distance_sequential(args, logger):
 
         # generate data for training z critic
         data = {"z_p": z_p, "z_q": z_q, "evals": episode_returns}
-        critic_train_data = {}
+        train_data = {}
         for k, v in data.items():
             if not isinstance(v, th.Tensor):
                 v = th.tensor(v, dtype=th.float, device=device)
             else:
                 v.to(device)
-            critic_train_data.update({k: v})
+            train_data.update({k: v})
 
-        # train z critic
-        critic_train_data["evals"] = torch.sum(critic_train_data["evals"], dim=0) / args.z_sample_runs
-        learner.z_critic_train(critic_train_data, z_train_steps)
-
-        # update z actor
-        learner.z_actor_train()
-
+        # train z critic and actors
+        train_data["evals"] = torch.sum(train_data["evals"], dim=0) / args.z_sample_runs
+        learner.z_train(train_data, z_train_steps)
 
         # Execute test runs once in a while
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)

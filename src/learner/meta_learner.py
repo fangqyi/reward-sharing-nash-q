@@ -66,10 +66,6 @@ class MetaLearner:
             latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
         return self.z_critics[idx](entry, latent_vars, z_idx)
 
-    def z_actor_train(self, z_prob, t_env, z):
-        for i in range(self.n_agents):
-            q = self.z_critic(entry)
-
     def z_train(self, entry, t_env, z=None):  # train z critic
         is_logging = False
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
