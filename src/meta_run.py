@@ -297,7 +297,7 @@ def run_distance_sequential(args, logger):
         critic_train_batch = {}
         for k, v in data.items():
             if not isinstance(v, th.Tensor):
-                v = th.tensor(v, dtype=th.long, device=args.device)
+                v = th.tensor(v, dtype=th.float, device=args.device)
             else:
                 v.to(args.device)
             critic_train_batch.update({k: v})
@@ -328,15 +328,42 @@ def run_distance_sequential(args, logger):
                 val.backward()
                 grad_norm.append(clip_grad_norm_(z[idx], args.grad_norm_clip))
                 z_optimisers[idx].step()
-                z[idx] = torch.clamp(z[idx].data,
-                                     min=args.latent_relation_space_lower_bound,
-                                     max=args.latent_relation_space_upper_bound)
+                # z[idx] = torch.clamp(z[idx].data,
+                #                      min=args.latent_relation_space_lower_bound,
+                #                      max=args.latent_relation_space_upper_bound)
             grad_norm = sum(grad_norm)/args.n_agents
         z_train_steps += 1
-
+        
+        if args.separate_agents:
+            z_q, z_p = [z[idx][0] for idx in range(args.n_agents)], [z[idx][1] for idx in range(args.n_agents)]
+            z_q = torch.stack(z_q, dim=0).detach()
+            z_p = torch.stack(z_p, dim=0).detach()
+        
         t_max = args.env_steps_every_z * args.total_z_training_steps
         logger.log_stat("Estimated social welfare", - total_val.item(), runner.t_env)
         logger.log_stat("z_grad_norm", grad_norm, runner.t_env)
+        
+        # in the desperation to understand what is going on
+        def softmax(vector):
+            import math
+            e = [math.exp(x) for x in vector]
+            return [x / sum(e) for x in e]
+
+        def distance(a, b):
+            import numpy
+            ret = numpy.linalg.norm(a - b, ord=2)
+            return ret
+        
+        z_q_cp = z_q.clone().detach().cpu().numpy()
+        z_p_cp = z_p.clone().detach().cpu().numpy()
+        dist = []
+        for giver in range(args.n_agents):
+            dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
+        
+        for receiver in range(args.n_agents):
+            for giver in range(args.n_agents):
+                logger.log_stat("giver agent {} to receiver agent {}".format(giver, receiver), dist[giver][receiver], runner.t_env)
+
         logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
         logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
         logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
