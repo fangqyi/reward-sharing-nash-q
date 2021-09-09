@@ -32,7 +32,10 @@ class ZACSeparateMAC:
             z_q.append(z_q_i)
             prob_z_p.append(prob_z_p_i)
             prob_z_q.append(prob_z_q_i)
-        return th.stack(z_p, dim=0), th.stack(prob_z_p, dim=0), th.stack(z_q, dim=0), th.stack(prob_z_q, dim=0)
+        return th.stack(z_p, dim=0).view(1, self.args.n_agents, self.args.latent_relation_space_dim), \
+               th.stack(prob_z_p, dim=0), \
+               th.stack(z_q, dim=0).view(1, self.args.n_agents, self.args.latent_relation_space_dim), \
+               th.stack(prob_z_q, dim=0)
 
     def forward_agent(self, data, idx):
         z_p_inputs = self._build_z_p_input(data)
