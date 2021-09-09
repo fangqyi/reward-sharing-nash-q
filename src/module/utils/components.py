@@ -60,7 +60,7 @@ class MLPMultiGaussianEncoder(nn.Module):
         else:
             self.z = self.z_means
         if self.sample_clamped:
-            self.z[:] = self.z.clamp(self.clamp_lower_bound,
+            self.z[:] = self.z.clone().clamp(self.clamp_lower_bound,
                                      self.clamp_upper_bound)  # TODO: double check if it cancels gradient at border
 
     def forward(self, input):

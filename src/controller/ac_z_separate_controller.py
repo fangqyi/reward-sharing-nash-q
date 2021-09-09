@@ -42,7 +42,7 @@ class ZACSeparateMAC:
         self.z_p_actors[idx](z_p_inputs)
         z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z)
         self.z_q_actors[idx](z_q_inputs)
-        return self.z_p_actors[idx].z, self.z_p_actors[idx].prob_z, self.z_q_actors[idx].z, self.z_q_actors[idx].prob_z
+        return self.z_p_actors[idx].z.detach(), self.z_p_actors[idx].prob_z, self.z_q_actors[idx].z.detach(), self.z_q_actors[idx].prob_z
 
     def parameters(self):
         return [list(self.z_p_actors[i].parameters()) + list(self.z_q_actors[i].parameters()) for i in range(self.n_agents)]
