@@ -296,8 +296,8 @@ def run_distance_sequential(args, logger):
             ret = numpy.linalg.norm(a - b, ord=2)
             return ret
 
-        z_q_cp = z_q.clone().detach().cpu().numpy()
-        z_p_cp = z_p.clone().detach().cpu().numpy()
+        z_q_cp = z_q.clone().detach().cpu().numpy()[0]
+        z_p_cp = z_p.clone().detach().cpu().numpy()[0]
         dist = []
         for giver in range(args.n_agents):
             dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
