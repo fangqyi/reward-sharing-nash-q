@@ -232,9 +232,9 @@ def run_distance_sequential(args, logger):
         actor_train_batch = {}
         for k, v in train_data.items():
             if not isinstance(v, th.Tensor):
-                v = th.tensor(v, dtype=th.float, device=device)
+                v = th.tensor(v, dtype=th.float, device=args.device)
             else:
-                v.to(device)
+                v.to(args.device)
             actor_train_batch.update({k: v})
         z_p, _, z_q, _ = z_mac.forward(actor_train_batch)
 
