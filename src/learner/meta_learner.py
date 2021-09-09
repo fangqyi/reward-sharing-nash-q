@@ -7,7 +7,7 @@ from components.episode_buffer import EpisodeBatch
 from module.critics.dist_critic import CenDistCritic, DecDistCritic
 
 
-class MetaQLearner:
+class MetaLearner:
     def __init__(self, mac, scheme, logger, args, z_mac=None):
         self.args = args
         self.n_agents = self.args.n_agents
@@ -353,26 +353,26 @@ class MetaQLearner:
                     th.save(self.z_critic_optimisers[idx].state_dict(), "{}/z_critic_opt{}.th".format(path, idx))
 
 
-def load_models(self, path, train=False):
-    self.mac.load_models(path)
-    # Not quite right but I don't want to save target networks
-    self.target_mac.load_models(path)
-    if self.args.separate_agents:
-        for idx in range(self.n_agents):
-            self.optimisers[idx].load_state_dict(
-                th.load("{}/opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
-    else:
-        self.optimiser.load_state_dict(th.load("{}/opt.th".format(path), map_location=lambda storage, loc: storage))
-
-    if train:  # also load z critic(s) and respective optimisers
-        if self.args.centralized_social_welfare:
-            self.z_critic.load_state_dict(
-                th.load("{}/z_critic.th".format(path), map_location=lambda storage, loc: storage))
-            self.z_critic_optimiser.load_state_dict(
-                th.load("{}/z_critic_opt.th".format(path), map_location=lambda storage, loc: storage))
-        else:
+    def load_models(self, path, train=False):
+        self.mac.load_models(path)
+        # Not quite right but I don't want to save target networks
+        self.target_mac.load_models(path)
+        if self.args.separate_agents:
             for idx in range(self.n_agents):
+                self.optimisers[idx].load_state_dict(
+                    th.load("{}/opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+        else:
+            self.optimiser.load_state_dict(th.load("{}/opt.th".format(path), map_location=lambda storage, loc: storage))
+
+        if train:  # also load z critic(s) and respective optimisers
+            if self.args.centralized_social_welfare:
                 self.z_critic.load_state_dict(
-                    th.load("{}/z_critic{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+                    th.load("{}/z_critic.th".format(path), map_location=lambda storage, loc: storage))
                 self.z_critic_optimiser.load_state_dict(
-                    th.load("{}/z_critic_opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+                    th.load("{}/z_critic_opt.th".format(path), map_location=lambda storage, loc: storage))
+            else:
+                for idx in range(self.n_agents):
+                    self.z_critic.load_state_dict(
+                        th.load("{}/z_critic{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+                    self.z_critic_optimiser.load_state_dict(
+                        th.load("{}/z_critic_opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
