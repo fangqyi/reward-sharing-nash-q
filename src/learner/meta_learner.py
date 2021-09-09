@@ -330,6 +330,8 @@ class MetaLearner:
         else:
             for z_critic in self.z_critics:
                 z_critic.cuda()
+        if self.args.critic_actor_update:
+            self.z_mac.cuda()
 
     def save_models(self, path, train=False):
         self.mac.save_models(path)
