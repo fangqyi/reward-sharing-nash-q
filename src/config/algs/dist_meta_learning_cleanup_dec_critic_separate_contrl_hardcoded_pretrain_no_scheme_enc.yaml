@@ -67,3 +67,6 @@ hardcoded_pretrained_tasks: False
 hardcoded_tasks_zp: [[0,10], [0,0]]
 hardcoded_tasks_zq: [[0,10], [0,0]]
 num_hc_pret_tasks: 2
+
+# different frequency of updating critic and z
+critic_upd_num_per_z_upd: 50

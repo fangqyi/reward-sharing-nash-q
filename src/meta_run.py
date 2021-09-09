@@ -241,6 +241,7 @@ def run_distance_sequential(args, logger):
     last_log_T = 0
     z_train_steps = 0
     env_steps_threshold = 0
+    t_max = args.env_steps_every_z * args.total_z_training_steps
 
     # initialize sharing scheme and its optimizer
     if not args.separate_agents:
@@ -256,6 +257,7 @@ def run_distance_sequential(args, logger):
                           preprocess=preprocess,
                           device=device)
 
+    critic_z_upd_cnt = 0
     train_phase = "train"
     while z_train_steps <= args.total_z_training_steps:
 
@@ -309,67 +311,67 @@ def run_distance_sequential(args, logger):
         else:
             critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"], dim=0) / args.z_sample_runs
         learner.z_train(critic_train_batch, z_train_steps, z)
+        critic_z_upd_cnt += 1
 
-        # update z_q, z_p
-        if not args.separate_agents:
-            total_val = - learner.get_social_welfare_z(critic_train_batch)
-            z_optimiser.zero_grad()
-            total_val.backward()
-            grad_norm = clip_grad_norm_(params, args.grad_norm_clip)
-            z_optimiser.step()
-        else:
-            grad_norm = []
-            total_val = torch.tensor(0.0).view(1).to(args.device)
-            for idx in range(args.n_agents):
-                val = - learner.get_agent_critic_estimate(critic_train_batch, idx, z[idx])
-                # val = - learner.get_agent_critic_estimate(z[idx], idx)
-                total_val += val
-                z_optimisers[idx].zero_grad()
-                val.backward()
-                grad_norm.append(clip_grad_norm_(z[idx], args.grad_norm_clip))
-                z_optimisers[idx].step()
-                # z[idx] = torch.clamp(z[idx].data,
-                #                      min=args.latent_relation_space_lower_bound,
-                #                      max=args.latent_relation_space_upper_bound)
-            grad_norm = sum(grad_norm)/args.n_agents
-        z_train_steps += 1
+        if args.critic_upd_num_per_z_upd <= critic_z_upd_cnt:
+            critic_z_upd_cnt = 0
+            # update z_q, z_p
+            if not args.separate_agents:
+                total_val = - learner.get_social_welfare_z(critic_train_batch)
+                z_optimiser.zero_grad()
+                total_val.backward()
+                grad_norm = clip_grad_norm_(params, args.grad_norm_clip)
+                z_optimiser.step()
+            else:
+                grad_norm = []
+                total_val = torch.tensor(0.0).view(1).to(args.device)
+                for idx in range(args.n_agents):
+                    val = - learner.get_agent_critic_estimate(critic_train_batch, idx, z[idx])
+                    # val = - learner.get_agent_critic_estimate(z[idx], idx)
+                    total_val += val
+                    z_optimisers[idx].zero_grad()
+                    val.backward()
+                    grad_norm.append(clip_grad_norm_(z[idx], args.grad_norm_clip))
+                    z_optimisers[idx].step()
+                    # z[idx] = torch.clamp(z[idx].data,
+                    #                      min=args.latent_relation_space_lower_bound,
+                    #                      max=args.latent_relation_space_upper_bound)
+                grad_norm = sum(grad_norm)/args.n_agents
+            z_train_steps += 1
         
-        if args.separate_agents:
-            z_q, z_p = [z[idx][0] for idx in range(args.n_agents)], [z[idx][1] for idx in range(args.n_agents)]
-            z_q = torch.stack(z_q, dim=0).detach()
-            z_p = torch.stack(z_p, dim=0).detach()
-        
-        t_max = args.env_steps_every_z * args.total_z_training_steps
-        logger.log_stat("Estimated social welfare", - total_val.item(), runner.t_env)
-        logger.log_stat("z_grad_norm", grad_norm, runner.t_env)
-        
-        # in the desperation to understand what is going on
-        def softmax(vector):
-            import math
-            e = [math.exp(x) for x in vector]
-            return [x / sum(e) for x in e]
+            if args.separate_agents:
+                z_q, z_p = [z[idx][0] for idx in range(args.n_agents)], [z[idx][1] for idx in range(args.n_agents)]
+                z_q = torch.stack(z_q, dim=0).detach()
+                z_p = torch.stack(z_p, dim=0).detach()
 
-        def distance(a, b):
-            import numpy
-            ret = numpy.linalg.norm(a - b, ord=2)
-            return ret
+            logger.log_stat("Estimated social welfare", - total_val.item(), runner.t_env)
+            logger.log_stat("z_grad_norm", grad_norm, runner.t_env)
         
-        z_q_cp = z_q.clone().detach().cpu().numpy()
-        z_p_cp = z_p.clone().detach().cpu().numpy()
-        dist = []
-        for giver in range(args.n_agents):
-            dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
+            # in the desperation to understand what is going on
+            def softmax(vector):
+                import math
+                e = [math.exp(x) for x in vector]
+                return [x / sum(e) for x in e]
+
+            def distance(a, b):
+                import numpy
+                ret = numpy.linalg.norm(a - b, ord=2)
+                return ret
         
-        for receiver in range(args.n_agents):
+            z_q_cp = z_q.clone().detach().cpu().numpy()
+            z_p_cp = z_p.clone().detach().cpu().numpy()
+            dist = []
             for giver in range(args.n_agents):
-                logger.log_stat("giver agent {} to receiver agent {}".format(giver, receiver), dist[giver][receiver], runner.t_env)
+                dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
+        
+            for receiver in range(args.n_agents):
+                for giver in range(args.n_agents):
+                    logger.log_stat("giver agent {} to receiver agent {}".format(giver, receiver), dist[giver][receiver], runner.t_env)
 
-        logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
-        logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
+            logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
+            logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
+
         logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
-        logger.console_logger.info("estimated time left: {}. Time passed: {}".format(
-            time_left(last_time, last_test_T, runner.t_env, t_max), time_str(time.time() - start_time)))
-        last_time = time.time()
 
         # Execute test runs once in a while
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)
