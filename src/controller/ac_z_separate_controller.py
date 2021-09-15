@@ -78,7 +78,7 @@ class ZACSeparateMAC:
         return inputs
 
     def _build_z_q_input(self, data, z_p):
-        inputs = [data["z_p"], data["z_q"], ]
+        inputs = [data["z_p"], data["z_q"], z_p]
         inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
         return inputs
 
@@ -113,10 +113,7 @@ class ZACDiscreteSeparateMAC(ZACSeparateMAC):
         else:
             z_p = [self.z_options[z_p_idx[idx]] for idx in range(len(z_p_idx))]
         z_p = th.tensor(z_p).to(self.args.device)
-        print(z_p.shape)
-        print(data)
         z_q_inputs = self._build_z_q_input(data, z_p)
-        print(z_q_inputs.shape)
         z_q_idx, prob_z_q = self.z_q_actors[idx].sample(z_q_inputs)
         if len(z_q_idx.shape) == 0:
             z_q = self.z_options[z_q_idx]
