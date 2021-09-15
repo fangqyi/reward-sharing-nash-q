@@ -194,7 +194,7 @@ class SoftmaxMLP(MLP):
         return x, prob_z
 
 
-class MultiSoftmaxMLP(MLP):
+class MultiSoftmaxMLP(SoftmaxMLP):
     def __init__(self,
                  input_size,
                  output_size,
