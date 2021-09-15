@@ -56,9 +56,10 @@ class MLPMultiGaussianEncoder(nn.Module):
         if self.use_information_bottleneck:
             posteriors = D.Normal(self.z_means, torch.sqrt(self.z_vars))
             self.z = posteriors.rsample()
-            print("sample got {} with mean {} and vars {}".format(self.z, self.z_means, self.z_vars))
+            print("sample got {} with mean {} and vars {}".format(self.z.item(), self.z_means.item(),
+                                                                  self.z_vars.item()))
             self.prob_z = posteriors.log_prob(self.z)
-            print("probability got {}".format(self.prob_z))
+            print("probability got {}".format(self.prob_z.item()))
         else:
             self.z = self.z_means
         if self.sample_clamped:
@@ -66,6 +67,8 @@ class MLPMultiGaussianEncoder(nn.Module):
                                      self.clamp_upper_bound)  # TODO: double check if it cancels gradient at border
 
     def forward(self, input):
+        print("input")
+        print(input)
         params = self.mlp(input)  # [batch_size, 2*output_size]
         if self.use_information_bottleneck:
             self.z_means = params[..., :self.output_size]
