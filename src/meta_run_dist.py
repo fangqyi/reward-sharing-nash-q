@@ -11,6 +11,8 @@ import pprint
 import threading
 from os.path import dirname, abspath
 from types import SimpleNamespace as SN
+import math
+impor numpy
 
 import torch
 import torch as th
@@ -284,10 +286,14 @@ def run_distance_sequential(args, logger):
             for _ in range(n_test_runs):
                 runner.run(z_q, z_p, test_mode=True, train_phase=train_phase)
 
+        print("z")
+        print(z_q)
+        print(z_p)
+
          # in the desperation to understand what is going on
 
         def softmax(vector):
-            import math
+
             e = [math.exp(x) for x in vector]
             return [x / sum(e) for x in e]
 
