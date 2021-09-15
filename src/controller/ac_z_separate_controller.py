@@ -78,7 +78,7 @@ class ZACSeparateMAC:
         return inputs
 
     def _build_z_q_input(self, data, z_p):
-        inputs = [data["z_p"], data["z_q"], th.tensor(z_p)]
+        inputs = [data["z_p"], data["z_q"], th.tensor(z_p).to(self.args.device)]
         inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
         return inputs
 
