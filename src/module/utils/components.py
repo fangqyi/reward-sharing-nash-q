@@ -72,6 +72,8 @@ class MLPMultiGaussianEncoder(nn.Module):
         params = self.mlp(input)  # [batch_size, 2*output_size]
         if self.use_information_bottleneck:
             self.z_means = params[..., :self.output_size]
+            print("raw z_vars")
+            print(params[..., self.output_size:])
             self.z_vars = F.softplus(params[..., self.output_size:])
             # z_params = [product_of_gaussians(m, s) for m,s in zip(torch.unbind(mu), torch.unbind(sigma_squared))]
         else:
