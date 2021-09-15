@@ -12,7 +12,7 @@ import threading
 from os.path import dirname, abspath
 from types import SimpleNamespace as SN
 import math
-impor numpy
+import numpy
 
 import torch
 import torch as th
