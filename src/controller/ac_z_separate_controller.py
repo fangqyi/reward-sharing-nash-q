@@ -89,7 +89,7 @@ class ZACDiscreteSeparateMAC(ZACSeparateMAC):
         self.relation_space_div_interval = args.relation_space_div_interval
         self.z_options = list(range(args.latent_relation_space_lower_bound,
                                     args.latent_relation_space_upper_bound,
-                                    args.relation_space_div_interval))
+                                    int(args.relation_space_div_interval)))
         output_size = args.latent_relation_space_dim * len(self.z_options)
         self.z_p_actors = [MultiSoftmaxMLP(input_size=args.latent_relation_space_dim * args.n_agents * 2,
                                            output_size=output_size,
