@@ -22,6 +22,7 @@ meta_type: "distance_latent"
 latent_relation_space_dim: 1
 latent_relation_space_upper_bound: 10.0
 latent_relation_space_lower_bound: 0.0
+relation_space_div_interval: 1
 latent_var_dim: 2
 latent_encoder_hidden_sizes: [64, 64]
 pretrained_task_num: 32

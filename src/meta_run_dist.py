@@ -6,21 +6,21 @@ Code framework adapted from https://github.com/TonghanWang/ROMA
 # in training, sharing scheme is represented as a gaussian distribution
 
 import datetime
+import math
 import os
 import pprint
 import threading
 from os.path import dirname, abspath
 from types import SimpleNamespace as SN
-import math
-import numpy
 
+import numpy
 import torch
 import torch as th
 from torch.distributions.uniform import Uniform
 
 from components.episode_buffer import ReplayBuffer
 from components.transforms import OneHot
-from controller.ac_z_separate_controller import ZACSeparateMAC
+from controller.ac_z_separate_controller import ZACDiscreteSeparateMAC
 from controller.d_separate_controller import SeparateMAC
 from learner import REGISTRY as le_REGISTRY
 from runner import REGISTRY as r_REGISTRY
@@ -126,7 +126,7 @@ def run_distance_sequential(args, logger):
 
     # Setup multiagent controllers
     mac = SeparateMAC(buffer.scheme, groups, args, train_phase)
-    z_mac = ZACSeparateMAC(buffer.scheme, groups, args)
+    z_mac = ZACDiscreteSeparateMAC(buffer.scheme, groups, args)
 
     # Give runner the scheme
     runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, mac=mac)
@@ -289,11 +289,7 @@ def run_distance_sequential(args, logger):
             for _ in range(n_test_runs):
                 runner.run(z_q, z_p, test_mode=True, train_phase=train_phase)
 
-        # print("z")
-        # print(z_q)
-        # print(z_p)
-
-         # in the desperation to understand what is going on
+        # in the desperation to understand what is going on
 
         def softmax(vector):
             e = [math.exp(x) for x in vector]

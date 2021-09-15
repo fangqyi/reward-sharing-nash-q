@@ -1,6 +1,7 @@
 import torch as th
 
 from module.utils import MLPMultiGaussianEncoder
+from module.utils.components import MultiSoftmaxMLP
 
 
 class ZACSeparateMAC:
@@ -8,14 +9,14 @@ class ZACSeparateMAC:
         self.n_agents = args.n_agents
         self.args = args
         self.scheme = scheme
-        self.z_p_actors = [MLPMultiGaussianEncoder(input_size=args.latent_relation_space_dim * args.n_agents*2,
+        self.z_p_actors = [MLPMultiGaussianEncoder(input_size=args.latent_relation_space_dim * args.n_agents * 2,
                                                    output_size=args.latent_relation_space_dim,
                                                    mlp_hidden_sizes=args.latent_encoder_hidden_sizes,
                                                    sample_clamped=True,
                                                    clamp_lower_bound=args.latent_relation_space_lower_bound,
                                                    clamp_upper_bound=args.latent_relation_space_upper_bound)
                            for _ in range(self.args.n_agents)]
-        self.z_q_actors = [MLPMultiGaussianEncoder(input_size=(args.latent_relation_space_dim * args.n_agents*2
+        self.z_q_actors = [MLPMultiGaussianEncoder(input_size=(args.latent_relation_space_dim * args.n_agents * 2
                                                                + args.latent_relation_space_dim),
                                                    output_size=args.latent_relation_space_dim,
                                                    mlp_hidden_sizes=args.latent_encoder_hidden_sizes,
@@ -42,10 +43,12 @@ class ZACSeparateMAC:
         self.z_p_actors[idx](z_p_inputs)
         z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z)
         self.z_q_actors[idx](z_q_inputs)
-        return self.z_p_actors[idx].z.detach(), self.z_p_actors[idx].prob_z, self.z_q_actors[idx].z.detach(), self.z_q_actors[idx].prob_z
+        return self.z_p_actors[idx].z.detach(), self.z_p_actors[idx].prob_z, self.z_q_actors[idx].z.detach(), \
+               self.z_q_actors[idx].prob_z
 
     def parameters(self):
-        return [list(self.z_p_actors[i].parameters()) + list(self.z_q_actors[i].parameters()) for i in range(self.n_agents)]
+        return [list(self.z_p_actors[i].parameters()) + list(self.z_q_actors[i].parameters()) for i in
+                range(self.n_agents)]
 
     def load_state(self, other_mac):
         for idx in range(self.n_agents):
@@ -78,3 +81,39 @@ class ZACSeparateMAC:
         inputs = [data["z_p"], data["z_q"], z_p]
         inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
         return inputs
+
+
+class ZACDiscreteSeparateMAC(ZACSeparateMAC):
+    def __init__(self, scheme, groups, args):
+        super(ZACSeparateMAC, self).__init__(scheme, groups, args)
+        self.relation_space_div_interval = args.relation_space_div_interval
+        self.z_options = list(range(args.latent_relation_space_lower_bound,
+                                    args.latent_relation_space_upper_bound,
+                                    args.relation_space_div_interval))
+        output_size = args.latent_relation_space_dim * len(self.z_options)
+        self.z_p_actors = [MultiSoftmaxMLP(input_size=args.latent_relation_space_dim * args.n_agents * 2,
+                                           output_size=output_size,
+                                           hidden_sizes=args.latent_encoder_hidden_sizes,
+                                           head_num=len(self.z_options))
+                           for _ in range(self.args.n_agents)]
+        self.z_q_actors = [MultiSoftmaxMLP(input_size=(args.latent_relation_space_dim * args.n_agents * 2
+                                                       + args.latent_relation_space_dim),
+                                           output_size=output_size,
+                                           hidden_sizes=args.latent_encoder_hidden_sizes,
+                                           head_num=len(self.z_options))
+                           for _ in range(self.args.n_agents)]
+
+    def forward_agent(self, data, idx):
+        z_p_inputs = self._build_z_p_input(data)
+        z_p_idx, prob_z_p = self.z_p_actors[idx].sample(z_p_inputs)
+        if len(z_p_idx.shape) == 0:
+            z_p = self.z_options[z_p_idx]
+        else:
+            z_p = [self.z_options[z_p_idx[idx]] for idx in range(len(z_p_idx))]
+        z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z)
+        z_q_idx, prob_z_q = self.z_q_actors[idx].sample(z_q_inputs)
+        if len(z_q_idx.shape) == 0:
+            z_q = self.z_options[z_q_idx]
+        else:
+            z_q = [self.z_options[z_q_idx[idx]] for idx in range(len(z_q_idx))]
+        return z_p, prob_z_p, z_q, prob_z_q 
