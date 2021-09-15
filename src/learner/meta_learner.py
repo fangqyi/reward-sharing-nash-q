@@ -104,6 +104,10 @@ class MetaLearner:
         if self.args.critic_actor_update:
             for i in range(self.n_agents):
                 z_p_i, prob_z_p_i, z_q_i, prob_z_q_i = self.z_mac.forward_agent(entry, i)
+                print("prob z q_{}".format(i))
+                print(prob_z_q_i)
+                print("prob z p_{}".format(i))
+                print(prob_z_p_i)
                 data = {"z_p": z_p_i, "z_q": z_q_i}
                 critic_data = {}
                 for k, v in data.items():
