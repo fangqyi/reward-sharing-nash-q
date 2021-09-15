@@ -96,6 +96,7 @@ class MetaLearner:
             z_critic_loss.backward()
             grad_norm = th.nn.utils.clip_grad_norm_(self.z_critic_params[i], self.args.grad_norm_clip)  # max_norm
             self.z_critic_optimisers[i].step()
+            is_logging = True  # debugging
             if is_logging:
                 self.logger.log_stat("z_critic_loss_agent_{}".format(i), z_critic_loss.item(), t_env)
                 self.logger.log_stat("z_critic_grad_norm_{}".format(i), grad_norm, t_env)
