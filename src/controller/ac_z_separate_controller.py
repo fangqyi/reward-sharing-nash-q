@@ -112,7 +112,7 @@ class ZACDiscreteSeparateMAC(ZACSeparateMAC):
             z_p = self.z_options[z_p_idx]
         else:
             z_p = [self.z_options[z_p_idx[idx]] for idx in range(len(z_p_idx))]
-        z_q_inputs = self._build_z_q_input(data, self.z_p)
+        z_q_inputs = self._build_z_q_input(data, z_p)
         z_q_idx, prob_z_q = self.z_q_actors[idx].sample(z_q_inputs)
         if len(z_q_idx.shape) == 0:
             z_q = self.z_options[z_q_idx]
