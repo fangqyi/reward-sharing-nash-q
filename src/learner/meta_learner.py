@@ -120,6 +120,7 @@ class MetaLearner:
                 pg_loss.backward()
                 grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[i], self.args.grad_norm_clip)
                 self.z_actors_optimisers[i].step()
+                is_logging = True  # debugging
                 if is_logging:
                     self.logger.log_stat("z_actors_policy_gradient_agent_{}".format(i), pg_loss.item(), t_env)
                     self.logger.log_stat("z_actors_grad_norm_{}".format(i), grad_norm, t_env)
