@@ -220,8 +220,8 @@ def run_distance_sequential(args, logger):
 
     # initialize sharing scheme actor and its optimizer
     # z_p, z_q = sample_dist_norm(args, train=True)  # initial sharing scheme
-    z_p, z_q = torch.tensor([0, 0]).view(args.n_agents, args.latent_relation_space_dim).to(args.device),\
-               torch.tensor([0, 10]).view(args.n_agents, args.latent_relation_space_dim).to(args.device)
+    z_p, z_q = torch.tensor([0, 0], dtype=th.float).view(args.n_agents, args.latent_relation_space_dim).to(args.device),\
+               torch.tensor([0, 10], dtype=th.float).view(args.n_agents, args.latent_relation_space_dim).to(args.device)
 
     device = "cpu" if args.buffer_cpu_only else args.device
     buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
