@@ -56,7 +56,9 @@ class MLPMultiGaussianEncoder(nn.Module):
         if self.use_information_bottleneck:
             posteriors = D.Normal(self.z_means, torch.sqrt(self.z_vars))
             self.z = posteriors.rsample()
+            print("sample got {} with mean {} and vars {}".format(self.z, self.z_means, self.z_vars))
             self.prob_z = posteriors.log_prob(self.z)
+            print("probability got {}".format(self.prob_z))
         else:
             self.z = self.z_means
         if self.sample_clamped:
