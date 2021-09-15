@@ -120,7 +120,7 @@ class MetaLearner:
                 if self.args.sharing_scheme_encoder:
                     latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
                 z_val = self.z_critics[i](entry, latent_var=latent_vars)
-                pg_loss = - z_val*(prob_z_q_i + prob_z_q_i).sum()
+                pg_loss = - z_val*(prob_z_q_i + prob_z_p_i).sum()
                 self.z_actors_optimisers[i].zero_grad()
                 pg_loss.backward()
                 grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[i], self.args.grad_norm_clip)
