@@ -86,6 +86,9 @@ class ZACSeparateMAC:
 class ZACDiscreteSeparateMAC(ZACSeparateMAC):
     def __init__(self, scheme, groups, args):
         super(ZACSeparateMAC, self).__init__()
+        self.n_agents = args.n_agents
+        self.args = args
+        self.scheme = scheme
         self.relation_space_div_interval = args.relation_space_div_interval
         self.z_options = [args.latent_relation_space_lower_bound+idx*args.relation_space_div_interval
                           for idx in range(int(args.latent_relation_space_lower_bound),
