@@ -36,7 +36,7 @@ class MetaLearner:
         # optimiser for z actor if needed
         if args.critic_actor_update:
             self.z_actors_params = self.z_mac.parameters()
-            self.z_actors_optimisers = [Adam(params=self.z_actors_params[i], lr=args.z_update_lr, eps=args.optim_eps) for i
+            self.z_actors_optimisers = [Adam(params=self.z_actors_params[i], lr=args.lr, eps=args.optim_eps) for i
                                         in range(self.n_agents)]
 
         # agent optimiser(s)
