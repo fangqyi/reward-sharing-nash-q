@@ -228,7 +228,7 @@ def run_distance_sequential(args, logger):
         "evals": {"vshape": env_info["reward_shape"], },
     }
     z_max_seq_length = 1
-    device = "cpu" if args.buffer_cpu_only else args.device
+    device = args.device # "cpu" if args.buffer_cpu_only else args.device
     z_buffer = ReplayBuffer(z_scheme, groups, args.z_buffer_size, max_seq_length=z_max_seq_length, device=device)
 
     # reinitialize training parameters
@@ -268,10 +268,10 @@ def run_distance_sequential(args, logger):
         for k, v in pre_transition_train_data.items():
             if not isinstance(v, th.Tensor):
                 v = th.tensor(v, dtype=th.float, device=device)
-            print(device)
+            # print(device)
             v.cuda()
-            print(k)
-            print(v.device)
+            # print(k)
+            # print(v.device)
             actor_train_batch.update({k: v})
         z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, z_train_steps)
 
