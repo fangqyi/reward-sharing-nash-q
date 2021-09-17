@@ -263,7 +263,7 @@ def run_distance_sequential(args, logger):
         # prepare for data
         pre_transition_train_data = {"z_q": z_q.clone(), "z_p": z_p.clone(),
                                      "z_q_idx": z_q_idx.clone(), "z_p_idx": z_p_idx.clone()}
-        z_batch.update(pre_transition_train_data, ts=0)
+        z_batch.update(pre_transition_train_data, bs=0, ts=0)
         actor_train_batch = {}
         for k, v in pre_transition_train_data.items():
             if not isinstance(v, th.Tensor):
@@ -303,7 +303,7 @@ def run_distance_sequential(args, logger):
         post_transition_train_data = {"cur_z_p": z_p, "cur_z_q": z_q,
                                       "cur_z_p_idx": z_p_idx, "cur_z_q_idx": z_q_idx,
                                       "evals": episode_returns}
-        z_batch.update(post_transition_train_data, ts=0)
+        z_batch.update(post_transition_train_data, bs=0, ts=0)
         z_buffer.insert_episode_batch(z_batch)
 
         if z_buffer.can_sample(args.z_batch_size):
