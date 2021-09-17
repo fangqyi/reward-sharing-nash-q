@@ -87,6 +87,8 @@ class ZACSeparateMAC:
         for x in inputs:
             if x.device != self.args.device:
                 x.to(self.args.device)
+                print(self.args.device)
+                x.cuda()
         print("z_q_input device")
         inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
         print(inputs.device)
