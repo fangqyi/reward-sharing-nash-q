@@ -375,10 +375,14 @@ class MetaLearner:
             if self.args.centralized_social_welfare:
                 th.save(self.z_critic.state_dict(), "{}/z_critic.th".format(path))
                 th.save(self.z_critic_optimiser.state_dict(), "{}/z_critic_opt.th".format(path))
-            else:
+            elif self.args.z_critic_gradient_update or self.args.z_critic_actor_update:
                 for idx in range(self.n_agents):
                     th.save(self.z_critics[idx].state_dict(), "{}/z_critics{}.th".format(path, idx))
                     th.save(self.z_critic_optimisers[idx].state_dict(), "{}/z_critic_opt{}.th".format(path, idx))
+
+            if self.args.z_q_update or self.args.z_critic_actor_update:
+                self.z_mac.save_models()
+
 
     def load_models(self, path, train=False):
         self.mac.load_models(path)
@@ -397,9 +401,12 @@ class MetaLearner:
                     th.load("{}/z_critic.th".format(path), map_location=lambda storage, loc: storage))
                 self.z_critic_optimiser.load_state_dict(
                     th.load("{}/z_critic_opt.th".format(path), map_location=lambda storage, loc: storage))
-            else:
+            elif self.args.z_critic_gradient_update or self.args.z_critic_actor_update::
                 for idx in range(self.n_agents):
                     self.z_critic.load_state_dict(
                         th.load("{}/z_critic{}.th".format(path, idx), map_location=lambda storage, loc: storage))
                     self.z_critic_optimiser.load_state_dict(
                         th.load("{}/z_critic_opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+
+            if self.args.z_q_update or self.args.z_critic_actor_update:
+                self.z_mac.load_models()
