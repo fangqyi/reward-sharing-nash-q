@@ -74,22 +74,27 @@ class ZACSeparateMAC:
 
     def _build_z_p_input(self, data):
         inputs = [data["z_p"], data["z_q"]]
+        print("z_p_input device")
         for x in inputs:   # shotgun fixes
+            print(x.device)
             if x.device != self.args.device:
                 x.to(self.args.device)
-        print("z_p_input device")
+                x.cuda()
+
         inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
         print(inputs.device)
         return inputs
 
     def _build_z_q_input(self, data, z_p):
         inputs = [data["z_p"], data["z_q"], z_p]
+        print("z_q_input device")
         for x in inputs:
+            print(x.device)
             if x.device != self.args.device:
                 x.to(self.args.device)
                 print(self.args.device)
                 x.cuda()
-        print("z_q_input device")
+
         inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
         print(inputs.device)
         return inputs
