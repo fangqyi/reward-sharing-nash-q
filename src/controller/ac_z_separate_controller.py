@@ -220,13 +220,14 @@ class ZQSeparateMAC(ZACSeparateMAC):
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
 
-    def _build_z_q_input(self, data, z_p, idx):
+    def _build_z_q_input(self, data, z_p, idx=None):
         if len(data["z_p"].shape) != 1:
             bs = data["z_p"].shape[0]
         else:
             bs = 1
         print("z_p new shape {}".format(z_p.shape))
-        z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
+        if idx is not None:  # for training, shotgun fix
+            z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
         inputs = [data["z_p"], data["z_q"], z_p]
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
