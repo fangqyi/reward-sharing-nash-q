@@ -217,12 +217,12 @@ def run_distance_sequential(args, logger):
 
     # Scheme for sharing schemes
     z_scheme = {
-        "z_q": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
-        "z_p": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
+        "z_q": {"vshape": (args.latent_relation_space_dim * args.n_agents,), "dtype": th.float},
+        "z_p": {"vshape": (args.latent_relation_space_dim * args.n_agents,), "dtype": th.float},
         "z_p_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
         "z_q_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
-        "cur_z_p": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
-        "cur_z_q": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
+        "cur_z_p": {"vshape": (args.latent_relation_space_dim * args.n_agents,), "dtype": th.float},
+        "cur_z_q": {"vshape": (args.latent_relation_space_dim * args.n_agents,), "dtype": th.float},
         "cur_z_p_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
         "cur_z_q_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
         "evals": {"vshape": env_info["reward_shape"], },
@@ -261,7 +261,7 @@ def run_distance_sequential(args, logger):
         mac.init_epsilon_schedule(train_phase)
 
         # prepare for data
-        pre_transition_train_data = {"z_q": z_q.clone(), "z_p": z_p.clone(),
+        pre_transition_train_data = {"z_q": z_q.clone().view(-1), "z_p": z_p.clone().view(-1),
                                      "z_q_idx": z_q_idx.clone(), "z_p_idx": z_p_idx.clone()}
         z_batch.update(pre_transition_train_data, ts=0)
         actor_train_batch = {}
@@ -300,7 +300,7 @@ def run_distance_sequential(args, logger):
         episode_returns = torch.sum(th.tensor(episode_returns, dtype=th.float), dim=0) / args.z_sample_runs
 
         # generate data for training z critic
-        post_transition_train_data = {"cur_z_p": z_p, "cur_z_q": z_q,
+        post_transition_train_data = {"cur_z_p": z_p.view(-1), "cur_z_q": z_q.view(-1),
                                       "cur_z_p_idx": z_p_idx, "cur_z_q_idx": z_q_idx,
                                       "evals": episode_returns}
         z_batch.update(post_transition_train_data, ts=0)
