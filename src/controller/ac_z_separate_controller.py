@@ -178,7 +178,7 @@ class ZQSeparateMAC(ZACSeparateMAC):
             # z_p
             z_p_outs = self.forward_z_p(data, idx).view(1, self.args.latent_relation_space_dim, -1)
             chosen_z_p_idx = self.z_p_actors_selector.select_action(z_p_outs, t_env=t_env, test_mode=test_mode).view(-1)
-            z_p = th.tensor([self.z_options[chosen_z_p_idx[idx]] for idx in range(len(chosen_z_p_idx))]).float()
+            z_p = th.tensor([self.z_options[chosen_z_p_idx[idx]] for idx in range(len(chosen_z_p_idx))]).float().to(self.args.device)
             chosen_z_p_s.append(z_p)
             chosen_z_p_idx_s.append(chosen_z_p_idx)
             # z_q
