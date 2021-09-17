@@ -137,13 +137,13 @@ class MetaLearner:
         elif self.args.z_q_update:
             for i in range(self.n_agents):
                 z_p_vals, z_q_vals = self.z_mac.forward_agent(entry, i)
-                print("z_p_vals shape {}".format(z_p_vals.shape))
-                print("cur z p index shape {}".format(entry["cur_z_p_idx"].shape))
+                # print("z_p_vals shape {}".format(z_p_vals.shape))
+                # print("cur z p index shape {}".format(entry["cur_z_p_idx"].shape))
                 chosen_z_p_vals = th.gather(z_p_vals, dim=-1,
                                             index=entry["cur_z_p_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
                 chosen_z_q_vals = th.gather(z_q_vals, dim=-1,
                                             index=entry["cur_z_q_idx"][i].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
-                loss = (chosen_z_p_vals + chosen_z_q_vals - entry["evals"][i])  # fake td_error
+                loss = (chosen_z_p_vals + chosen_z_q_vals - entry["evals"][i]).sum()  # fake td_error
                 self.z_actors_optimisers[i].zero_grad()
                 loss.backward()
                 grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[i], self.args.grad_norm_clip)
