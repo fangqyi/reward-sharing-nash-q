@@ -250,7 +250,7 @@ def run_distance_sequential(args, logger):
                           preprocess=preprocess,
                           device=device)
 
-    new_z_batch = partial(EpisodeBatch, z_scheme, groups, args.z_batch_size, z_max_seq_length, device=device)
+    new_z_batch = partial(EpisodeBatch, z_scheme, groups, 1, z_max_seq_length, device=device)
 
     train_phase = "train"
     while z_train_steps <= args.total_z_training_steps:
@@ -263,7 +263,7 @@ def run_distance_sequential(args, logger):
         # prepare for data
         pre_transition_train_data = {"z_q": z_q.clone(), "z_p": z_p.clone(),
                                      "z_q_idx": z_q_idx.clone(), "z_p_idx": z_p_idx.clone()}
-        z_batch.update(pre_transition_train_data, bs=0, ts=0)
+        z_batch.update(pre_transition_train_data, ts=0)
         actor_train_batch = {}
         for k, v in pre_transition_train_data.items():
             if not isinstance(v, th.Tensor):
@@ -271,7 +271,7 @@ def run_distance_sequential(args, logger):
             else:
                 v.to(args.device)
             actor_train_batch.update({k: v})
-        z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, pre_transition_train_data, z_train_t_env)
+        z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, z_train_steps)
 
         while runner.t_env <= env_steps_threshold:
             episode_batch = runner.run(z_q, z_p, test_mode=False, train_phase=train_phase)
@@ -303,7 +303,7 @@ def run_distance_sequential(args, logger):
         post_transition_train_data = {"cur_z_p": z_p, "cur_z_q": z_q,
                                       "cur_z_p_idx": z_p_idx, "cur_z_q_idx": z_q_idx,
                                       "evals": episode_returns}
-        z_batch.update(post_transition_train_data, bs=0, ts=0)
+        z_batch.update(post_transition_train_data, ts=0)
         z_buffer.insert_episode_batch(z_batch)
 
         if z_buffer.can_sample(args.z_batch_size):
