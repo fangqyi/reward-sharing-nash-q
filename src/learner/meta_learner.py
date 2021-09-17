@@ -142,7 +142,7 @@ class MetaLearner:
                 chosen_z_p_vals = th.gather(z_p_vals, dim=-1,
                                             index=entry["cur_z_p_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
                 chosen_z_q_vals = th.gather(z_q_vals, dim=-1,
-                                            index=entry["cur_z_q_idx"][i].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
+                                            index=entry["cur_z_q_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
                 loss = (chosen_z_p_vals + chosen_z_q_vals - entry["evals"][i]).sum()  # fake td_error
                 self.z_actors_optimisers[i].zero_grad()
                 loss.backward()
