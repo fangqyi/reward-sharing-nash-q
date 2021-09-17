@@ -41,7 +41,7 @@ class ZACSeparateMAC:
     def forward_agent(self, data, idx):
         z_p_inputs = self._build_z_p_input(data)
         self.z_p_actors[idx](z_p_inputs)
-        z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z)
+        z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z, idx)
         self.z_q_actors[idx](z_q_inputs)
         return self.z_p_actors[idx].z.detach(), self.z_p_actors[idx].prob_z, self.z_q_actors[idx].z.detach(), \
                self.z_q_actors[idx].prob_z
@@ -74,21 +74,22 @@ class ZACSeparateMAC:
 
     def _build_z_p_input(self, data):
         inputs = [data["z_p"], data["z_q"]]
-        print("data[z_p] shape {}".format(data["z_p"].shape))
-        print("data[z_q] shape {}".format(data["z_q"].shape))
-        if len(data["z_p"].shape) == 2:
+        # print("data[z_p] shape {}".format(data["z_p"].shape))
+        # print("data[z_q] shape {}".format(data["z_q"].shape))
+        if len(data["z_p"].shape) != 2:
             bs = data["z_p"].shape[0]
         else:
             bs = 1
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
 
-    def _build_z_q_input(self, data, z_p):
-        inputs = [data["z_p"], data["z_q"], z_p]
+    def _build_z_q_input(self, data, z_p, idx):
         if len(data["z_p"].shape) == 2:
             bs = data["z_p"].shape[0]
         else:
             bs = 1
+        z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
+        inputs = [data["z_p"], data["z_q"], z_p]
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
 
@@ -160,7 +161,7 @@ class ZQSeparateMAC(ZACSeparateMAC):
     def forward_agent(self, data, idx):  # should only be used in training
         z_p_vals = self.forward_z_p(data, idx)
         # print("cur_z_p shape{}".format(data["cur_z_p"].shape))
-        z_q_vals = self.forward_z_q(data, idx, data["cur_z_p"].view(self.n_agents, -1)[idx])
+        z_q_vals = self.forward_z_q(data, idx, data["cur_z_p"])
         return z_p_vals, z_q_vals
 
     def forward(self, data):  # should only be used in training
@@ -174,13 +175,13 @@ class ZQSeparateMAC(ZACSeparateMAC):
 
     def forward_z_p(self, data, idx):
         z_p_inputs = self._build_z_p_input(data)
-        print("z_p_inputs shape{}".format(z_p_inputs.shape))
+        # print("z_p_inputs shape{}".format(z_p_inputs.shape))
         z_p_q_vals = self.z_p_actors[idx].forward(z_p_inputs)  # [z_dim, div_num]
         return z_p_q_vals
 
     def forward_z_q(self, data, idx, z_p):
-        z_q_inputs = self._build_z_q_input(data, z_p)
-        print("z_q_inputs shape{}".format(z_q_inputs.shape))
+        z_q_inputs = self._build_z_q_input(data, z_p, idx)
+        # print("z_q_inputs shape{}".format(z_q_inputs.shape))
         z_q_q_vals = self.z_q_actors[idx].forward(z_q_inputs)
         return z_q_q_vals
 
@@ -207,3 +208,26 @@ class ZQSeparateMAC(ZACSeparateMAC):
         chosen_z_p_idx_s = th.stack(chosen_z_p_idx_s, dim=0)
         chosen_z_q_idx_s = th.stack(chosen_z_q_idx_s, dim=0)
         return chosen_z_p_s, chosen_z_q_s, chosen_z_p_idx_s, chosen_z_q_idx_s
+
+    def _build_z_p_input(self, data):
+        inputs = [data["z_p"], data["z_q"]]
+        # print("data[z_p] shape {}".format(data["z_p"].shape))
+        # print("data[z_q] shape {}".format(data["z_q"].shape))
+        if len(data["z_p"].shape) != 1:
+            bs = data["z_p"].shape[0]
+        else:
+            bs = 1
+        inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
+        return inputs
+
+    def _build_z_q_input(self, data, z_p, idx):
+        if len(data["z_p"].shape) != 1:
+            bs = data["z_p"].shape[0]
+        else:
+            bs = 1
+        print("z_p new shape {}".format(z_p.shape))
+        z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
+        inputs = [data["z_p"], data["z_q"], z_p]
+        inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
+        return inputs
+
