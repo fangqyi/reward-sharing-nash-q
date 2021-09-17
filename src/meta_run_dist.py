@@ -6,21 +6,22 @@ Code framework adapted from https://github.com/TonghanWang/ROMA
 # in training, sharing scheme is represented as a gaussian distribution
 
 import datetime
+import math
 import os
 import pprint
 import threading
+from functools import partial
 from os.path import dirname, abspath
 from types import SimpleNamespace as SN
-import math
-import numpy
 
+import numpy
 import torch
 import torch as th
 from torch.distributions.uniform import Uniform
 
-from components.episode_buffer import ReplayBuffer
+from components.episode_buffer import ReplayBuffer, EpisodeBatch
 from components.transforms import OneHot
-from controller.ac_z_separate_controller import ZACSeparateMAC
+from controller.ac_z_separate_controller import ZACDiscreteSeparateMAC, ZQSeparateMAC
 from controller.d_separate_controller import SeparateMAC
 from learner import REGISTRY as le_REGISTRY
 from runner import REGISTRY as r_REGISTRY
@@ -122,11 +123,15 @@ def run_distance_sequential(args, logger):
                           preprocess=preprocess,
                           device="cpu" if args.buffer_cpu_only else args.device)
 
-    train_phase = "pretrain"
+    # Set up controller for sharing scheme
+    if args.z_critic_actor_update:
+        z_mac = ZACDiscreteSeparateMAC(args)
+    elif args.z_q_update:
+        z_mac = ZQSeparateMAC(args)
 
+    train_phase = "pretrain"
     # Setup multiagent controllers
     mac = SeparateMAC(buffer.scheme, groups, args, train_phase)
-    z_mac = ZACSeparateMAC(buffer.scheme, groups, args)
 
     # Give runner the scheme
     runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, mac=mac)
@@ -205,11 +210,26 @@ def run_distance_sequential(args, logger):
                 learner.save_models(save_path)
             episode += args.batch_size_run
 
-
     ############################### optimizing sharing structure #########################
 
     logger.console_logger.info(
         "Beginning training for {} timesteps".format(args.total_z_training_steps * args.env_steps_every_z))
+
+    # Scheme for sharing schemes
+    z_scheme = {
+        "z_q": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
+        "z_p": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
+        "z_p_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
+        "z_q_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
+        "cur_z_p": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
+        "cur_z_q": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.float},
+        "cur_z_p_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
+        "cur_z_q_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
+        "evals": {"vshape": env_info["reward_shape"], },
+    }
+    z_max_seq_length = 1
+    device = args.device # "cpu" if args.buffer_cpu_only else args.device
+    z_buffer = ReplayBuffer(z_scheme, groups, args.z_buffer_size, max_seq_length=z_max_seq_length, device=device)
 
     # reinitialize training parameters
     episode = 0
@@ -217,31 +237,41 @@ def run_distance_sequential(args, logger):
     last_log_T = 0
     z_train_steps = 0
     env_steps_threshold = 0
+    z_train_t_env = 0
 
     # initialize sharing scheme actor and its optimizer
     z_p, z_q = sample_dist_norm(args, train=True)  # initial sharing scheme
+    z_p_idx = th.tensor([0, 0], dtype=th.int64).to(device)
+    z_q_idx = th.tensor([0, 0], dtype=th.int64).to(device)
     # z_p, z_q = torch.tensor([0, 0], dtype=th.float).view(args.n_agents, args.latent_relation_space_dim).to(args.device),\
     #            torch.tensor([0, 10], dtype=th.float).view(args.n_agents, args.latent_relation_space_dim).to(args.device)
 
-    device = "cpu" if args.buffer_cpu_only else args.device
     buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
                           preprocess=preprocess,
                           device=device)
 
+    new_z_batch = partial(EpisodeBatch, z_scheme, groups, 1, z_max_seq_length, device=device)
+
     train_phase = "train"
     while z_train_steps <= args.total_z_training_steps:
 
+        # initialize for every new sharing scheme
         env_steps_threshold += args.env_steps_every_z
+        z_batch = new_z_batch()
         mac.init_epsilon_schedule(train_phase)
-        train_data = {"z_q": z_q, "z_p": z_p}
+
+        # prepare for data
+        pre_transition_train_data = {"z_q": z_q.clone(), "z_p": z_p.clone(),
+                                     "z_q_idx": z_q_idx.clone(), "z_p_idx": z_p_idx.clone()}
+        z_batch.update(pre_transition_train_data, ts=0)
         actor_train_batch = {}
-        for k, v in train_data.items():
+        for k, v in pre_transition_train_data.items():
             if not isinstance(v, th.Tensor):
-                v = th.tensor(v, dtype=th.float, device=args.device)
+                v = th.tensor(v, dtype=th.float, device=device)
             else:
-                v.to(args.device)
+                v = v.to(device)
             actor_train_batch.update({k: v})
-        z_p, _, z_q, _ = z_mac.forward(actor_train_batch)
+        z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, z_train_steps)
 
         while runner.t_env <= env_steps_threshold:
             episode_batch = runner.run(z_q, z_p, test_mode=False, train_phase=train_phase)
@@ -267,20 +297,23 @@ def run_distance_sequential(args, logger):
         for _ in range(args.z_sample_runs):
             episode_returns.append(
                 runner.run(z_q, z_p, test_mode=True, sample_return_mode=True, train_phase=train_phase))
+        episode_returns = torch.sum(th.tensor(episode_returns, dtype=th.float), dim=0) / args.z_sample_runs
 
         # generate data for training z critic
-        data = {"z_p": z_p, "z_q": z_q, "evals": episode_returns}
-        train_data = {}
-        for k, v in data.items():
-            if not isinstance(v, th.Tensor):
-                v = th.tensor(v, dtype=th.float, device=device)
-            else:
-                v.to(device)
-            train_data.update({k: v})
+        post_transition_train_data = {"cur_z_p": z_p, "cur_z_q": z_q,
+                                      "cur_z_p_idx": z_p_idx, "cur_z_q_idx": z_q_idx,
+                                      "evals": episode_returns}
+        z_batch.update(post_transition_train_data, ts=0)
+        z_buffer.insert_episode_batch(z_batch)
 
-        # train z critic and actors
-        train_data["evals"] = torch.sum(train_data["evals"], dim=0) / args.z_sample_runs
-        learner.z_train(train_data, z_train_steps)
+        if z_buffer.can_sample(args.z_batch_size):
+            z_sample = z_buffer.sample(args.z_batch_size)
+            if z_sample.device != args.device:
+                z_sample.to(args.device)
+
+            # train z critic and actors
+            learner.z_train(z_sample, z_train_steps)
+            z_train_steps += 1
 
         # Execute test runs once in a while
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)
@@ -289,22 +322,17 @@ def run_distance_sequential(args, logger):
             for _ in range(n_test_runs):
                 runner.run(z_q, z_p, test_mode=True, train_phase=train_phase)
 
-        # print("z")
-        # print(z_q)
-        # print(z_p)
-
-         # in the desperation to understand what is going on
-
+        # in the desperation to understand what is going on
         def softmax(vector):
             e = [math.exp(x) for x in vector]
             return [x / sum(e) for x in e]
 
         def distance(a, b):
-            ret = numpy.linalg.norm(a - b, ord=2)
+            ret = numpy.linalg.norm([a - b], ord=2)
             return ret
 
-        z_q_cp = z_q.clone().detach().cpu().numpy()[0]
-        z_p_cp = z_p.clone().detach().cpu().numpy()[0]
+        z_q_cp = z_q.clone().view(args.n_agents, -1).detach().cpu().numpy()
+        z_p_cp = z_p.clone().view(args.n_agents, -1).detach().cpu().numpy()
         dist = []
         for giver in range(args.n_agents):
             dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
@@ -315,8 +343,8 @@ def run_distance_sequential(args, logger):
                                 runner.t_env)
 
         t_max = args.env_steps_every_z * args.total_z_training_steps
-        logger.log_vec(tag="z_p", mat=z_p[0], global_step=runner.t_env)
-        logger.log_vec(tag="z_q", mat=z_q[0], global_step=runner.t_env)
+        logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
+        logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
         logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
 
         if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
@@ -327,7 +355,7 @@ def run_distance_sequential(args, logger):
 
             learner.save_models(save_path, train=True)  # also save z_critic and etc
 
-        episode += args.batch_size_run
+        episode += 1
 
         if (runner.t_env - last_log_T) >= args.log_interval:
             logger.log_stat("episode", episode, runner.t_env)
@@ -361,6 +389,7 @@ def sample_dist_norm(args, train=False, autograd=False):
     z[0].requires_grad = autograd
     z[1].requires_grad = autograd
     return z
+
 
 # test on simple hardcoded example
 def get_hardcoded_tasks(args):
