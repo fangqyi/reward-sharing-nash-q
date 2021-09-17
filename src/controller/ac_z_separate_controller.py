@@ -225,7 +225,7 @@ class ZQSeparateMAC(ZACSeparateMAC):
             bs = data["z_p"].shape[0]
         else:
             bs = 1
-        print("z_p new shape {}".format(z_p.shape))
+        # print("z_p new shape {}".format(z_p.shape))
         if idx is not None:  # for training, shotgun fix
             z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
         inputs = [data["z_p"], data["z_q"], z_p]
