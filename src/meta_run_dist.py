@@ -268,7 +268,8 @@ def run_distance_sequential(args, logger):
         for k, v in pre_transition_train_data.items():
             if not isinstance(v, th.Tensor):
                 v = th.tensor(v, dtype=th.float, device=device)
-            v.to(device)
+            print(device)
+            v.cuda()
             print(k)
             print(v.device)
             actor_train_batch.update({k: v})
