@@ -74,13 +74,19 @@ class ZACSeparateMAC:
 
     def _build_z_p_input(self, data):
         inputs = [data["z_p"], data["z_q"]]
-        bs = data["z_p"].shape[0]
+        if len(data["z_p"].shape) == 2:
+            bs = data["z_p"].shape[0]
+        else:
+            bs = 1
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
 
     def _build_z_q_input(self, data, z_p):
         inputs = [data["z_p"], data["z_q"], z_p]
-        bs = data["z_p"].shape[0]
+        if len(data["z_p"].shape) == 2:
+            bs = data["z_p"].shape[0]
+        else:
+            bs = 1
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
 
