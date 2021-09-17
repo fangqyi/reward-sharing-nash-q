@@ -184,12 +184,14 @@ class EpisodeBatch:
 
     def _parse_slices(self, items):
         parsed = []
+        print(items)
         # Only batch slice given, add full time slice
         if (isinstance(items, slice)  # slice a:b
             or isinstance(items, int)  # int i
             or (isinstance(items, (list, np.ndarray, th.LongTensor, th.cuda.LongTensor)))  # [a,b,c]
             ):
             items = (items, slice(None))
+        print(items)
 
         # Need the time indexing to be contiguous
         if isinstance(items[1], list):
@@ -203,6 +205,7 @@ class EpisodeBatch:
             else:
                 # Leave slices and lists as is
                 parsed.append(item)
+        print(parsed)
         return parsed
 
     def max_t_filled(self):

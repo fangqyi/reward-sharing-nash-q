@@ -250,7 +250,7 @@ def run_distance_sequential(args, logger):
                           preprocess=preprocess,
                           device=device)
 
-    new_z_batch = partial(EpisodeBatch, z_scheme, groups, args.z_batch_size, z_max_seq_length+1, device=device)
+    new_z_batch = partial(EpisodeBatch, z_scheme, groups, args.z_batch_size, z_max_seq_length, device=device)
 
     train_phase = "train"
     while z_train_steps <= args.total_z_training_steps:
