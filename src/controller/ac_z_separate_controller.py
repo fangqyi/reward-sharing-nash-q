@@ -149,7 +149,7 @@ class ZQSeparateMAC(ZACSeparateMAC):
 
     def forward_agent(self, data, idx):  # should only be used in training
         z_p_vals = self.forward_z_p(data, idx)
-        z_q_vals = self.forward_z_q(data, idx, data["cur_z_p"][idx])
+        z_q_vals = self.forward_z_q(data, idx, data["cur_z_p"][:, idx])
         return z_p_vals, z_q_vals
 
     def forward(self, data):  # should only be used in training
