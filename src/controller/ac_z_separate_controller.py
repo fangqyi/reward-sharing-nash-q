@@ -1,14 +1,14 @@
 import torch as th
 
+from components.action_selectors import EpsilonGreedyActionSelector
 from module.utils import MLPMultiGaussianEncoder
-from module.utils.components import MultiSoftmaxMLP
+from module.utils.components import MultiSoftmaxMLP, MultiMLP
 
 
 class ZACSeparateMAC:
-    def __init__(self, scheme, groups, args):
+    def __init__(self, args):
         self.n_agents = args.n_agents
         self.args = args
-        self.scheme = scheme
         self.z_p_actors = [MLPMultiGaussianEncoder(input_size=args.latent_relation_space_dim * args.n_agents * 2,
                                                    output_size=args.latent_relation_space_dim,
                                                    mlp_hidden_sizes=args.latent_encoder_hidden_sizes,
@@ -84,10 +84,10 @@ class ZACSeparateMAC:
 
 
 class ZACDiscreteSeparateMAC(ZACSeparateMAC):
-    def __init__(self, scheme, groups, args):
-        super(ZACDiscreteSeparateMAC, self).__init__(scheme, groups, args)
+    def __init__(self, args):
+        super(ZACDiscreteSeparateMAC, self).__init__(args)
         self.relation_space_div_interval = args.relation_space_div_interval
-        self.z_options = [args.latent_relation_space_lower_bound+idx*args.relation_space_div_interval
+        self.z_options = [args.latent_relation_space_lower_bound + idx * args.relation_space_div_interval
                           for idx in range(int(args.latent_relation_space_lower_bound),
                                            int(args.latent_relation_space_upper_bound),
                                            int(args.relation_space_div_interval))]  # this is horrible
@@ -121,3 +121,76 @@ class ZACDiscreteSeparateMAC(ZACSeparateMAC):
             z_q = [self.z_options[z_q_idx[idx]] for idx in range(len(z_q_idx))]
         z_q = th.tensor(z_q).to(self.args.device)
         return z_p, prob_z_p, z_q, prob_z_q
+
+
+class ZQSeparateMAC(ZACSeparateMAC):
+    def __init__(self, args):
+        super(ZQSeparateMAC, self).__init__(args)
+        self.relation_space_div_interval = args.relation_space_div_interval
+        self.z_options = [args.latent_relation_space_lower_bound + idx * args.relation_space_div_interval
+                          for idx in range(int(args.latent_relation_space_lower_bound),
+                                           int(args.latent_relation_space_upper_bound),
+                                           int(args.relation_space_div_interval))]  # this is horrible
+
+        output_size = args.latent_relation_space_dim * len(self.z_options)
+        self.z_p_actors = [MultiMLP(input_size=args.latent_relation_space_dim * args.n_agents * 2,
+                                    output_size=output_size,
+                                    hidden_sizes=args.latent_encoder_hidden_sizes,
+                                    head_num=len(self.z_options))
+                           for _ in range(self.args.n_agents)]
+        self.z_q_actors = [MultiMLP(input_size=(args.latent_relation_space_dim * args.n_agents * 2
+                                                + args.latent_relation_space_dim),
+                                    output_size=output_size,
+                                    hidden_sizes=args.latent_encoder_hidden_sizes,
+                                    head_num=len(self.z_options))
+                           for _ in range(self.args.n_agents)]
+        self.z_p_actors_selector = EpsilonGreedyActionSelector(self.args, "z_train")
+        self.z_q_actors_selector = EpsilonGreedyActionSelector(self.args, "z_train")
+
+    def forward_agent(self, data, idx):  # should only be used in training
+        z_p_vals = self.forward_z_p(data, idx)
+        z_q_vals = self.forward_z_q(data, idx, data["cur_z_p"][idx])
+        return z_p_vals, z_q_vals
+
+    def forward(self, data):  # should only be used in training
+        z_p_vals, z_q_vals = [], []
+        for i in range(self.n_agents):
+            z_p_val, z_q_val = self.forward_agent(data, i)
+            z_p_vals.append(z_p_val)
+            z_q_vals.append(z_q_val)
+        return th.stack(z_p_vals, dim=0).view(self.args.n_agents, self.args.latent_relation_space_dim, -1), \
+               th.stack(z_q_vals, dim=0).view(self.args.n_agents, self.args.latent_relation_space_dim, -1)
+
+    def forward_z_p(self, data, idx):
+        z_p_inputs = self._build_z_p_input(data)
+        z_p_q_vals = self.z_p_actors[idx].forward(z_p_inputs)  # [z_dim, div_num]
+        return z_p_q_vals
+
+    def forward_z_q(self, data, idx, z_p):
+        z_q_inputs = self._build_z_q_input(data, z_p)
+        z_q_q_vals = self.z_q_actors[idx].forward(z_q_inputs)
+        return z_q_q_vals
+
+    def select_z(self, data, t_env, test_mode=False):
+        chosen_z_p_s, chosen_z_q_s = [], []
+        chosen_z_p_idx_s, chosen_z_q_idx_s = [], []
+        for idx in range(self.n_agents):
+            # z_p
+            z_p_outs = self.forward_z_p(data, idx).view(1, self.args.latent_relation_space_dim, -1)
+            chosen_z_p_idx = self.z_p_actors_selector.select_action(z_p_outs, t_env, test_mode=test_mode).view(-1)
+            z_p = th.tensor([self.z_options[chosen_z_p_idx[idx]] for idx in range(len(chosen_z_p_idx))]).float()
+            chosen_z_p_s.append(z_p)
+            chosen_z_p_idx_s.append(chosen_z_p_idx)
+            # z_q
+            z_q_outs = self.forward_z_q(data, idx, chosen_z_p_idx.clone()).view(1, self.args.latent_relation_space_dim,
+                                                                                -1)
+            chosen_z_q_idx = self.z_q_actors_selector.select_action(z_q_outs, t_env, test_mode=test_mode).view(-1)
+            z_q = th.tensor([self.z_options[chosen_z_q_idx[idx]] for idx in range(len(chosen_z_q_idx))]).float()
+            chosen_z_q_s.append(z_q)
+            chosen_z_q_idx_s.append(chosen_z_q_idx)
+        # stack
+        chosen_z_p_s = th.stack(chosen_z_p_s, dim=0)  # [n_agents, space_dim]
+        chosen_z_q_s = th.stack(chosen_z_q_s, dim=0)
+        chosen_z_p_idx_s = th.stack(chosen_z_p_idx_s, dim=0)
+        chosen_z_q_idx_s = th.stack(chosen_z_q_idx_s, dim=0)
+        return chosen_z_p_s, chosen_z_q_s, chosen_z_p_idx_s, chosen_z_q_idx_s

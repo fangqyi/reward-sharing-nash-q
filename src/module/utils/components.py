@@ -229,6 +229,63 @@ class MultiSoftmaxMLP(SoftmaxMLP):
             output = F.softmax(output, dim=-1)
         return output
 
+    def sample(self, input, return_preactivation=False, get_max=False):
+        probs = self.forward(input, return_preactivation)
+        if get_max:
+            x = probs.argmax(dim=-1)
+            prob_x = probs.max(dim=-1)
+        else:
+            dist = D.Categorical(probs=probs)
+            x = dist.sample()
+            prob_x = dist.log_prob(x)
+        return x, prob_x
+
+class MultiMLP(SoftmaxMLP):
+    def __init__(self,
+                 input_size,
+                 output_size,
+                 hidden_sizes,
+                 head_num,
+                 init_w=3e-3,
+                 hidden_activation=F.leaky_relu,
+                 output_activation=identity,
+                 hidden_init=fanin_init,
+                 b_init_value=0.1,
+                 layer_norm=False,
+                 layer_norm_params=None,
+                 ):
+        super(MultiMLP, self).__init__(input_size,
+                                              output_size,
+                                              hidden_sizes,
+                                              init_w,
+                                              hidden_activation,
+                                              output_activation,
+                                              hidden_init,
+                                              b_init_value,
+                                              layer_norm,
+                                              layer_norm_params)
+        self.head_num = head_num
+
+    def forward(self, input, return_preactivation=False):
+        output = super().forward(input, return_preactivation)
+        if return_preactivation:
+            output[0] = F.softmax(output[0], dim=-1)
+        else:
+            output = output.view(-1, self.head_num)
+            output = F.softmax(output, dim=-1)
+        return output
+
+    def sample(self, input, return_preactivation=False, get_max=False):
+        probs = self.forward(input, return_preactivation)
+        if get_max:
+            x = probs.argmax(dim=-1)
+            prob_x = probs.max(dim=-1)
+        else:
+            dist = D.Categorical(probs=probs)
+            x = dist.sample()
+            prob_x = dist.log_prob(x)
+        return x, prob_x
+
 
 class FlattenMLP(MLP):
     """

@@ -11,21 +11,26 @@ class EpsilonGreedyActionSelector():
 
     def __init__(self, args, train_phase):
         self.args = args
+        self.train_phase = train_phase
 
         if train_phase == "pretrain":
             epsilon_start = args.pretrain_epsilon_start
             epsilon_finish = args.pretrain_epsilon_finish
             epsilon_anneal_time = args.pretrain_epsilon_anneal_time
-        else:
+        elif train_phase == "train":
             epsilon_start = args.train_epsilon_start
             epsilon_finish = args.train_epsilon_finish
             epsilon_anneal_time = args.train_epsilon_anneal_time
+        else:  # train_phase = "z_train"
+            epsilon_start = args.z_train_epsilon_start
+            epsilon_finish = args.z_train_epsilon_finish
+            epsilon_anneal_time = args.z_train_epsilon_anneal_time
 
         self.schedule = DecayThenFlatSchedule(epsilon_start, epsilon_finish, epsilon_anneal_time, decay="linear")
         self.epsilon = self.schedule.eval(0)
 
-    def select_action(self, agent_inputs, avail_actions, t_env, test_mode=False):
-
+    def select_action(self, agent_inputs, avail_actions=None, t_env=None, test_mode=False):
+        # t_env should not be None TODO: refactor
         # Assuming agent_inputs is a batch of Q-Values for each agent bav
         self.epsilon = self.schedule.eval(t_env)
 
@@ -35,7 +40,8 @@ class EpsilonGreedyActionSelector():
 
         # mask actions that are excluded from selection
         masked_q_values = agent_inputs.clone()
-        masked_q_values[avail_actions == 0.0] = -float("inf")  # should never be selected!
+        if avail_actions is not None:
+            masked_q_values[avail_actions == 0.0] = -float("inf")  # should never be selected!
 
         random_numbers = torch.rand_like(agent_inputs[:, :, 0])
         pick_random = (random_numbers < self.epsilon).long()
@@ -67,7 +73,7 @@ class EpsilonGreedyActionSelector():
         picked_pq = pick_random * random_pq + (1 - pick_random) * raw_pq
         return picked_pq
 
-    def select_individuak_pq_values(self, raw_p, raw_q, t_env, test_mode=False):
+    def select_individual_pq_values(self, raw_p, raw_q, t_env, test_mode=False):
         epsilon = self.schedule.eval(t_env)
 
         if test_mode:
