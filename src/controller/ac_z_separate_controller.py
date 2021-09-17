@@ -163,6 +163,7 @@ class ZQSeparateMAC(ZACSeparateMAC):
 
     def forward_z_p(self, data, idx):
         z_p_inputs = self._build_z_p_input(data)
+        print(z_p_inputs.shape)
         z_p_q_vals = self.z_p_actors[idx].forward(z_p_inputs)  # [z_dim, div_num]
         return z_p_q_vals
 
