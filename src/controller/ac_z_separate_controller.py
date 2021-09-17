@@ -90,6 +90,8 @@ class ZACSeparateMAC:
         print("z_q_input device")
         for x in inputs:
             print(x.device)
+            print(self.args.device)
+            print()
             if x.device != self.args.device:
                 x.to(self.args.device)
                 print(self.args.device)
