@@ -401,7 +401,7 @@ class MetaLearner:
                     th.load("{}/z_critic.th".format(path), map_location=lambda storage, loc: storage))
                 self.z_critic_optimiser.load_state_dict(
                     th.load("{}/z_critic_opt.th".format(path), map_location=lambda storage, loc: storage))
-            elif self.args.z_critic_gradient_update or self.args.z_critic_actor_update::
+            elif self.args.z_critic_gradient_update or self.args.z_critic_actor_update:
                 for idx in range(self.n_agents):
                     self.z_critic.load_state_dict(
                         th.load("{}/z_critic{}.th".format(path, idx), map_location=lambda storage, loc: storage))
