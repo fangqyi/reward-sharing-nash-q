@@ -268,10 +268,10 @@ def run_distance_sequential(args, logger):
         for k, v in pre_transition_train_data.items():
             if not isinstance(v, th.Tensor):
                 v = th.tensor(v, dtype=th.float, device=device)
-            # print(device)
+            print(device)
             v.cuda()
-            # print(k)
-            # print(v.device)
+            print(k)
+            print(v.device)
             actor_train_batch.update({k: v})
         z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, z_train_steps)
 
