@@ -149,7 +149,7 @@ class ZQSeparateMAC(ZACSeparateMAC):
 
     def forward_agent(self, data, idx):  # should only be used in training
         z_p_vals = self.forward_z_p(data, idx)
-        print("cur_z_p shape{}".format(data["cur_z_p"].shape))
+        # print("cur_z_p shape{}".format(data["cur_z_p"].shape))
         z_q_vals = self.forward_z_q(data, idx, data["cur_z_p"].view(self.n_agents, -1)[idx])
         return z_p_vals, z_q_vals
 
@@ -164,13 +164,13 @@ class ZQSeparateMAC(ZACSeparateMAC):
 
     def forward_z_p(self, data, idx):
         z_p_inputs = self._build_z_p_input(data)
-        print("z_p_inputs shape{}".format(z_p_inputs.shape))
+        # print("z_p_inputs shape{}".format(z_p_inputs.shape))
         z_p_q_vals = self.z_p_actors[idx].forward(z_p_inputs)  # [z_dim, div_num]
         return z_p_q_vals
 
     def forward_z_q(self, data, idx, z_p):
         z_q_inputs = self._build_z_q_input(data, z_p)
-        print("z_q_inputs shape{}".format(z_q_inputs.shape))
+        # print("z_q_inputs shape{}".format(z_q_inputs.shape))
         z_q_q_vals = self.z_q_actors[idx].forward(z_q_inputs)
         return z_q_q_vals
 
