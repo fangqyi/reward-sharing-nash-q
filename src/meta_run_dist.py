@@ -241,8 +241,8 @@ def run_distance_sequential(args, logger):
 
     # initialize sharing scheme actor and its optimizer
     z_p, z_q = sample_dist_norm(args, train=True)  # initial sharing scheme
-    z_p_idx = th.tensor([0, 0], dtype=th.int64)
-    z_q_idx = th.tensor([0, 0], dtype=th.int64)
+    z_p_idx = th.tensor([0, 0], dtype=th.int64).to(device)
+    z_q_idx = th.tensor([0, 0], dtype=th.int64).to(device)
     # z_p, z_q = torch.tensor([0, 0], dtype=th.float).view(args.n_agents, args.latent_relation_space_dim).to(args.device),\
     #            torch.tensor([0, 10], dtype=th.float).view(args.n_agents, args.latent_relation_space_dim).to(args.device)
 
@@ -267,9 +267,8 @@ def run_distance_sequential(args, logger):
         actor_train_batch = {}
         for k, v in pre_transition_train_data.items():
             if not isinstance(v, th.Tensor):
-                v = th.tensor(v, dtype=th.float, device=args.device)
-            else:
-                v.to(args.device)
+                v = th.tensor(v, dtype=th.float, device=device)
+            v.to(device)
             print(k)
             print(v.device)
             actor_train_batch.update({k: v})
