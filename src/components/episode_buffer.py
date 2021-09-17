@@ -108,10 +108,10 @@ class EpisodeBatch:
                 v = th.tensor(v, dtype=dtype, device=self.device)
             else:
                 v.to(self.device)
-            print("crash: k {}, v{}".format(k, v))
-            print("shape v :{}, target: {}".format(v.shape, target[k].shape))
-            print("_slices: {}".format(_slices))
-            print("slices: {}".format(slices))
+            # print("crash: k {}, v{}".format(k, v))
+            # print("shape v :{}, target: {}".format(v.shape, target[k].shape))
+            # print("_slices: {}".format(_slices))
+            # print("slices: {}".format(slices))
             self._check_safe_view(v, target[k][_slices])
             target[k][_slices] = v.view_as(target[k][_slices])
 
@@ -184,14 +184,12 @@ class EpisodeBatch:
 
     def _parse_slices(self, items):
         parsed = []
-        print(items)
         # Only batch slice given, add full time slice
         if (isinstance(items, slice)  # slice a:b
             or isinstance(items, int)  # int i
             or (isinstance(items, (list, np.ndarray, th.LongTensor, th.cuda.LongTensor)))  # [a,b,c]
             ):
             items = (items, slice(None))
-        print(items)
 
         # Need the time indexing to be contiguous
         if isinstance(items[1], list):
@@ -205,7 +203,6 @@ class EpisodeBatch:
             else:
                 # Leave slices and lists as is
                 parsed.append(item)
-        print(parsed)
         return parsed
 
     def max_t_filled(self):

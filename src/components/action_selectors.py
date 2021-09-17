@@ -50,7 +50,8 @@ class EpsilonGreedyActionSelector():
         else:
             random_actions = Categorical(torch.ones_like(agent_inputs).float()).sample().long()
         picked_actions = pick_random * random_actions + (1 - pick_random) * masked_q_values.max(dim=2)[1]
-        if not (torch.gather(avail_actions, dim=2, index=picked_actions.unsqueeze(2)) > 0.99).all():
+
+        if avail_actions is not None and not (torch.gather(avail_actions, dim=2, index=picked_actions.unsqueeze(2)) > 0.99).all():
             print((torch.gather(avail_actions, dim=2, index=random_actions.unsqueeze(2)) <= 0.99).squeeze())
             print((torch.gather(avail_actions, dim=2, index=masked_q_values.max(dim=2)[1].unsqueeze(2)) <= 0.99).squeeze())
             print((torch.gather(avail_actions, dim=2, index=picked_actions.unsqueeze(2)) <= 0.99).squeeze())
