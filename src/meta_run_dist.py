@@ -261,8 +261,8 @@ def run_distance_sequential(args, logger):
         mac.init_epsilon_schedule(train_phase)
 
         # prepare for data
-        pre_transition_train_data = {"z_q": z_q.clone().unsqueeze(0), "z_p": z_p.clone().unsqueeze(0),
-                                     "z_q_idx": z_q_idx.clone().unsqueeze(0), "z_p_idx": z_p_idx.clone().unsqueeze(0)}
+        pre_transition_train_data = {"z_q": z_q.clone(), "z_p": z_p.clone(),
+                                     "z_q_idx": z_q_idx.clone(), "z_p_idx": z_p_idx.clone()}
         z_batch.update(pre_transition_train_data, ts=0)
         actor_train_batch = {}
         for k, v in pre_transition_train_data.items():
