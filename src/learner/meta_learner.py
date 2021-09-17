@@ -381,8 +381,7 @@ class MetaLearner:
                     th.save(self.z_critic_optimisers[idx].state_dict(), "{}/z_critic_opt{}.th".format(path, idx))
 
             if self.args.z_q_update or self.args.z_critic_actor_update:
-                self.z_mac.save_models()
-
+                self.z_mac.save_models(path)
 
     def load_models(self, path, train=False):
         self.mac.load_models(path)
@@ -409,4 +408,4 @@ class MetaLearner:
                         th.load("{}/z_critic_opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
 
             if self.args.z_q_update or self.args.z_critic_actor_update:
-                self.z_mac.load_models()
+                self.z_mac.load_models(path)
