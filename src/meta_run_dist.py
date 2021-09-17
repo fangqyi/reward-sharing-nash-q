@@ -308,7 +308,7 @@ def run_distance_sequential(args, logger):
 
         if z_buffer.can_sample(args.z_batch_size):
             z_sample = z_buffer.sample(args.z_batch_size)
-            if z_sample != args.device:
+            if z_sample.device != args.device:
                 z_sample.to(args.deivce)
 
             # train z critic and actors
