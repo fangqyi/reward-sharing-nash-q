@@ -270,6 +270,8 @@ def run_distance_sequential(args, logger):
                 v = th.tensor(v, dtype=th.float, device=args.device)
             else:
                 v.to(args.device)
+            print(k)
+            print(v.device)
             actor_train_batch.update({k: v})
         z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, z_train_steps)
 
@@ -354,6 +356,7 @@ def run_distance_sequential(args, logger):
             logger.console_logger.info("Saving models to {}".format(save_path))
 
             learner.save_models(save_path, train=True)  # also save z_critic and etc
+
 
         episode += 1
 
