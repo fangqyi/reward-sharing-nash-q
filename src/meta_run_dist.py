@@ -357,7 +357,6 @@ def run_distance_sequential(args, logger):
 
             learner.save_models(save_path, train=True)  # also save z_critic and etc
 
-
         episode += 1
 
         if (runner.t_env - last_log_T) >= args.log_interval:
