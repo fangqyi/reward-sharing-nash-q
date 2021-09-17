@@ -74,12 +74,14 @@ class ZACSeparateMAC:
 
     def _build_z_p_input(self, data):
         inputs = [data["z_p"], data["z_q"]]
-        inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
+        bs = data["z_p"].shape[0]
+        inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
 
     def _build_z_q_input(self, data, z_p):
         inputs = [data["z_p"], data["z_q"], z_p]
-        inputs = th.cat([x.reshape(1, -1) for x in inputs], dim=-1)
+        bs = data["z_p"].shape[0]
+        inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
 
 
@@ -164,7 +166,7 @@ class ZQSeparateMAC(ZACSeparateMAC):
 
     def forward_z_p(self, data, idx):
         z_p_inputs = self._build_z_p_input(data)
-        print("z_p_inputs shape{}".format(z_p_inputs.shape))
+        # print("z_p_inputs shape{}".format(z_p_inputs.shape))
         z_p_q_vals = self.z_p_actors[idx].forward(z_p_inputs)  # [z_dim, div_num]
         return z_p_q_vals
 
