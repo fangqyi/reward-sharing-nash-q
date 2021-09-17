@@ -328,7 +328,7 @@ def run_distance_sequential(args, logger):
             return [x / sum(e) for x in e]
 
         def distance(a, b):
-            ret = numpy.linalg.norm(a - b, ord=2)
+            ret = numpy.linalg.norm([a - b], ord=2)
             return ret
 
         z_q_cp = z_q.clone().detach().cpu().numpy()[0]
