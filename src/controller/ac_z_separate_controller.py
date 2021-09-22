@@ -80,7 +80,7 @@ class ZACSeparateMAC:
         inputs = [data["z_p"], data["z_q"]]
         print("data z_p shape {}".format(data["z_p"].shape))
         print("data z_q shape {}".format(data["z_q"].shape))
-        if len(data["z_p"].shape) != 2:
+        if len(data["z_p"].shape) >= 2:
             bs = data["z_p"].shape[0]
         else:
             bs = 1
@@ -89,7 +89,7 @@ class ZACSeparateMAC:
         return inputs
 
     def _build_z_q_input(self, data, z_p, idx):
-        if len(data["z_p"].shape) == 2:
+        if len(data["z_p"].shape) >= 2:
             bs = data["z_p"].shape[0]
         else:
             bs = 1
@@ -212,7 +212,7 @@ class ZQSeparateMAC(ZACSeparateMAC):
 
     def _build_z_p_input(self, data):
         inputs = [data["z_p"], data["z_q"]]
-        if len(data["z_p"].shape) != 1:
+        if len(data["z_p"].shape) >= 2:
             bs = data["z_p"].shape[0]
         else:
             bs = 1
@@ -220,7 +220,7 @@ class ZQSeparateMAC(ZACSeparateMAC):
         return inputs
 
     def _build_z_q_input(self, data, z_p, idx=None):
-        if len(data["z_p"].shape) != 1:
+        if len(data["z_p"].shape) >= 2:
             bs = data["z_p"].shape[0]
         else:
             bs = 1
