@@ -45,10 +45,7 @@ class ZACSeparateMAC:
     def forward_agent(self, data, idx, train=True):
         z_p_inputs = self._build_z_p_input(data)
         self.z_p_actors[idx](z_p_inputs)
-        if train:
-            z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z, idx)
-        else:
-            z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z)
+        z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z)
         self.z_q_actors[idx](z_q_inputs)
         return self.z_p_actors[idx].z.detach(), self.z_p_actors[idx].prob_z, self.z_q_actors[idx].z.detach(), \
                self.z_q_actors[idx].prob_z
@@ -91,13 +88,12 @@ class ZACSeparateMAC:
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
 
-    def _build_z_q_input(self, data, z_p, idx=None):
+    def _build_z_q_input(self, data, z_p):
         if len(data["z_p"].shape) >= 2:
             bs = data["z_p"].shape[0]
         else:
             bs = 1
-        if idx is not None:
-            z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
+        z_p = z_p.view(bs, -1)
         inputs = [data["z_p"], data["z_q"], z_p]
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
