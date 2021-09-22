@@ -124,11 +124,11 @@ def run_distance_sequential(args, logger):
                           device="cpu" if args.buffer_cpu_only else args.device)
 
     # Set up controller for sharing scheme
-    if args.z_critic_actor_update:
+    if args.z_critic_actor_discrete_update:
         z_mac = ZACDiscreteSeparateMAC(args)
     elif args.z_q_update:
         z_mac = ZQSeparateMAC(args)
-    elif args.z_critic_actor_discrete_update:
+    elif args.z_critic_actor_update:
         z_mac = ZACSeparateMAC(args)
 
     train_phase = "pretrain"
