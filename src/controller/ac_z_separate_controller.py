@@ -26,10 +26,10 @@ class ZACSeparateMAC:
                            for _ in range(self.args.n_agents)]
 
     def select_z(self, data, t_env, test_mode=False):
-        z_p, prob_z_p, z_q, prob_z_q = self.forward(data)
+        z_p, prob_z_p, z_q, prob_z_q = self.forward(data, train=False)
         return z_p, z_q, prob_z_p, prob_z_q
 
-    def forward(self, data):
+    def forward(self, data, train=True):
         z_p, prob_z_p, z_q, prob_z_q = [], [], [], []
         for i in range(self.n_agents):
             z_p_i, prob_z_p_i, z_q_i, prob_z_q_i = self.forward_agent(data, i)
@@ -42,10 +42,13 @@ class ZACSeparateMAC:
                th.stack(z_q, dim=0).view(1, self.args.n_agents, self.args.latent_relation_space_dim), \
                th.stack(prob_z_q, dim=0)
 
-    def forward_agent(self, data, idx):
+    def forward_agent(self, data, idx, train=True):
         z_p_inputs = self._build_z_p_input(data)
         self.z_p_actors[idx](z_p_inputs)
-        z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z, idx)
+        if train:
+            z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z, idx)
+        else:
+            z_q_inputs = self._build_z_q_input(data, self.z_p_actors[idx].z)
         self.z_q_actors[idx](z_q_inputs)
         return self.z_p_actors[idx].z.detach(), self.z_p_actors[idx].prob_z, self.z_q_actors[idx].z.detach(), \
                self.z_q_actors[idx].prob_z
@@ -88,12 +91,13 @@ class ZACSeparateMAC:
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
 
-    def _build_z_q_input(self, data, z_p, idx):
+    def _build_z_q_input(self, data, z_p, idx=None):
         if len(data["z_p"].shape) >= 2:
             bs = data["z_p"].shape[0]
         else:
             bs = 1
-        z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
+        if idx is not None:
+            z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
         inputs = [data["z_p"], data["z_q"], z_p]
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         return inputs
