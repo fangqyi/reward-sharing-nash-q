@@ -92,7 +92,7 @@ class DecDistCritic(nn.Module):  # decentralized critic for individual rewards o
         if self.args.sharing_scheme_encoder:
             inputs.append(latent_var)
         # used for critic updating agent's sharing scheme gradient (is it actually working?)
-        if self.args.critic_gradient_update:
+        if self.args.z_critic_gradient_update:
             inputs.append(z_idx)
 
         inputs = torch.cat([x.reshape(-1) for x in inputs], dim=-1)
@@ -102,6 +102,6 @@ class DecDistCritic(nn.Module):  # decentralized critic for individual rewards o
         shape = self.args.latent_relation_space_dim * 2 * self.n_agents
         if self.args.sharing_scheme_encoder:  # need to add encoded content
             shape += self.args.latent_var_dim  # encoded z_q, z_q
-        if self.args.critic_gradient_update:
+        if self.args.z_critic_gradient_update:
             shape += self.args.latent_relation_space_dim * 2
         return shape
