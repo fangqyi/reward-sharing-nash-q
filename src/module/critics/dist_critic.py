@@ -88,6 +88,10 @@ class DecDistCritic(nn.Module):  # decentralized critic for individual rewards o
     def _build_inputs(self, batch, latent_var=None, z_idx=None):
         # assume latent_state: [bs, latent_state_size]
         # obs: [bs, seq_len, n_agents, obs_size]
+        if len(batch["z_p"].shape) >= 2:
+            bs = batch["z_p"].shape[0]
+        else:
+            bs = 1
         inputs = [batch["z_p"], batch["z_q"]]
         if self.args.sharing_scheme_encoder:
             inputs.append(latent_var)
@@ -95,7 +99,8 @@ class DecDistCritic(nn.Module):  # decentralized critic for individual rewards o
         if self.args.z_critic_gradient_update:
             inputs.append(z_idx)
 
-        inputs = torch.cat([x.reshape(-1) for x in inputs], dim=-1)
+        inputs = torch.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
+        print("inputs shape {}".format(inputs.shape))
         return inputs
 
     def _get_input_shape(self):

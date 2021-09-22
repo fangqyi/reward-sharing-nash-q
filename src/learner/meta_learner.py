@@ -26,7 +26,7 @@ class MetaLearner:
             self.z_critic = CenDistCritic(scheme, args)
             self.z_critic_params = list(self.z_critic.parameters())
             self.z_critic_optimiser = Adam(params=self.z_critic_params, lr=args.z_critic_lr, eps=args.optim_eps)
-        elif args.z_critic_actor_update or args.z_critic_gradient_update:
+        elif args.z_critic_actor_update or args.z_critic_gradient_update or args.z_critic_actor_discrete_update:
             # fully decentralized critics on reward-sharing structure
             self.z_critics = [DecDistCritic(scheme, args) for _ in range(self.args.n_agents)]
             self.z_critic_params = [list(critic.parameters()) for critic in self.z_critics]
