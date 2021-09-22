@@ -5,6 +5,7 @@ import copy
 import math
 
 import numpy
+from numpy import clip
 import torch
 
 from env import REGISTRY as env_REGISTRY
@@ -67,7 +68,7 @@ class DistEpisodeRunner:
             z_q = z_q.detach().cpu().numpy()
             z_p = z_p.detach().cpu().numpy()
 
-        if len(z_q.shape) == 3:
+        if len(z_q.shape) == 3:  # TODO: fix this shotgun
             z_q_cp = z_q[0]
             z_p_cp = z_p[0]
         else:
@@ -107,8 +108,15 @@ class DistEpisodeRunner:
             actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
 
             rewards, terminated, env_info = self.env.step(actions[0])
-            distributed_r = [0] * self.n_agents
 
+            # clamp the sharing schemes (doing it here to prevent it from messing with gradients)
+            # the clamped result doesn't save to replay buffer in case it messes with training (does it?)
+            upper = self.args.latent_relation_space_upper_bound
+            lower = self.args.latent_relation_space_lower_bound
+            z_q_cp = clip(z_q_cp, lower, upper)
+            z_p_cp = clip(z_p_cp, lower, upper)
+
+            distributed_r = [0] * self.n_agents
             # calculate distance
             dist = []
             for giver in range(self.n_agents):

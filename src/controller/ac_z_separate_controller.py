@@ -11,18 +11,18 @@ class ZACSeparateMAC:
         self.args = args
         self.z_p_actors = [MLPMultiGaussianEncoder(input_size=args.latent_relation_space_dim * args.n_agents * 2,
                                                    output_size=args.latent_relation_space_dim,
-                                                   mlp_hidden_sizes=args.latent_encoder_hidden_sizes,
-                                                   sample_clamped=True,
-                                                   clamp_lower_bound=args.latent_relation_space_lower_bound,
-                                                   clamp_upper_bound=args.latent_relation_space_upper_bound)
+                                                   mlp_hidden_sizes=args.latent_encoder_hidden_sizes)
+                                                   # sample_clamped=True,
+                                                   # clamp_lower_bound=args.latent_relation_space_lower_bound,
+                                                   # clamp_upper_bound=args.latent_relation_space_upper_bound)
                            for _ in range(self.args.n_agents)]
         self.z_q_actors = [MLPMultiGaussianEncoder(input_size=(args.latent_relation_space_dim * args.n_agents * 2
                                                                + args.latent_relation_space_dim),
                                                    output_size=args.latent_relation_space_dim,
-                                                   mlp_hidden_sizes=args.latent_encoder_hidden_sizes,
-                                                   sample_clamped=True,
-                                                   clamp_lower_bound=args.latent_relation_space_lower_bound,
-                                                   clamp_upper_bound=args.latent_relation_space_upper_bound)
+                                                   mlp_hidden_sizes=args.latent_encoder_hidden_sizes)
+                                                   # sample_clamped=True,
+                                                   # clamp_lower_bound=args.latent_relation_space_lower_bound,
+                                                   # clamp_upper_bound=args.latent_relation_space_upper_bound)
                            for _ in range(self.args.n_agents)]
 
     def forward(self, data):
