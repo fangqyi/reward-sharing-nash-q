@@ -32,7 +32,7 @@ class ZACSeparateMAC:
     def forward(self, data, train=True):
         z_p, prob_z_p, z_q, prob_z_q = [], [], [], []
         for i in range(self.n_agents):
-            z_p_i, prob_z_p_i, z_q_i, prob_z_q_i = self.forward_agent(data, i)
+            z_p_i, prob_z_p_i, z_q_i, prob_z_q_i = self.forward_agent(data, i, train)
             z_p.append(z_p_i)
             z_q.append(z_q_i)
             prob_z_p.append(prob_z_p_i)
