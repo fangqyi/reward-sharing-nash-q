@@ -293,11 +293,6 @@ def run_distance_sequential(args, logger):
 
                 learner.train(episode_sample, runner.t_env, episode)
 
-            if (runner.t_env - last_log_T) >= args.log_interval:
-                logger.log_stat("episode", episode, runner.t_env)
-                logger.print_recent_stats()
-                last_log_T = runner.t_env
-
         # sample for optimizing z critic
         episode_returns = []
         for _ in range(args.z_sample_runs):
@@ -330,10 +325,13 @@ def run_distance_sequential(args, logger):
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)
         if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
             last_test_T = runner.t_env
+            logged = False
             for _ in range(n_test_runs):
                 test_z_p, test_z_q, _, _ = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=False)
-                log_z(test_z_q, test_z_p, args, logger, runner, prefix="test")
                 runner.run(test_z_q, test_z_p, test_mode=True, train_phase=train_phase)
+                if not logged:
+                    log_z(test_z_q, test_z_p, args, logger, runner, prefix="test")
+                    logged = True
 
         log_z(z_q, z_p, args, logger, runner, prefix="train")
 
@@ -351,7 +349,6 @@ def run_distance_sequential(args, logger):
             learner.save_models(save_path, train=True)  # also save z_critic and etc
 
         episode += 1
-
         if (runner.t_env - last_log_T) >= args.log_interval:
             logger.log_stat("episode", episode, runner.t_env)
             logger.log_stat("z_train_steps", z_train_steps, runner.t_env)
