@@ -12,7 +12,7 @@ pretrain_epsilon_anneal_time: 1500000
 
 train_epsilon_start: 1.0
 train_epsilon_finish: 0.05
-train_epsilon_anneal_time: 8000
+train_epsilon_anneal_time: 7500
 
 z_train_epsilon_start: 1.0
 z_train_epsilon_finish: 0.05
