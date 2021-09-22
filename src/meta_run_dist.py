@@ -323,7 +323,7 @@ def run_distance_sequential(args, logger):
 
         # Execute test runs once in a while
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)
-        if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
+        if (runner.t_env - last_test_T) / args.z_test_interval >= 1.0:
             last_test_T = runner.t_env
             logged = False
             for _ in range(n_test_runs):
