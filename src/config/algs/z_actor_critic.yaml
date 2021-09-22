@@ -67,7 +67,7 @@ inference_net_hidden_sizes: [64, 64]
 z_critic_gradient_update: False
 z_critic_actor_update: True
 z_critic_actor_discrete_update: False
-z_q_update: True
+z_q_update: False
 
 # loading model from environment
 load_pretrained_model: True
