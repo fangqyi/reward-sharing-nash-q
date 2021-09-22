@@ -100,7 +100,7 @@ class DecDistCritic(nn.Module):  # decentralized critic for individual rewards o
             inputs.append(z_idx)
 
         inputs = torch.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
-        print("inputs shape {}".format(inputs.shape))
+        # print("inputs shape {}".format(inputs.shape))
         return inputs
 
     def _get_input_shape(self):
