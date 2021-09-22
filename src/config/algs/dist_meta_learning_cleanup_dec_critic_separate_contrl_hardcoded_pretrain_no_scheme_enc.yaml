@@ -35,7 +35,8 @@ latent_encoder_hidden_sizes: [64, 64]
 pretrained_task_num: 32
 total_pretrain_steps: 2000000
 z_critic_lr: 0.001
-z_update_lr: 0.05
+z_actor_lr: 0.001
+z_update_lr: 0.05  # only for critic gradient approach
 
 # update the target network every {} episodes
 target_update_interval: 30
@@ -65,6 +66,7 @@ inference_net_hidden_sizes: [64, 64]
 # optimize sharing scheme in training:
 z_critic_gradient_update: False
 z_critic_actor_update: False
+z_critic_actor_discrete_update: False
 z_q_update: True
 
 # loading model from environment

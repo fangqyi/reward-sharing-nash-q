@@ -21,7 +21,7 @@ from torch.distributions.uniform import Uniform
 
 from components.episode_buffer import ReplayBuffer, EpisodeBatch
 from components.transforms import OneHot
-from controller.ac_z_separate_controller import ZACDiscreteSeparateMAC, ZQSeparateMAC
+from controller.ac_z_separate_controller import ZACDiscreteSeparateMAC, ZQSeparateMAC, ZACSeparateMAC
 from controller.d_separate_controller import SeparateMAC
 from learner import REGISTRY as le_REGISTRY
 from runner import REGISTRY as r_REGISTRY
@@ -128,6 +128,8 @@ def run_distance_sequential(args, logger):
         z_mac = ZACDiscreteSeparateMAC(args)
     elif args.z_q_update:
         z_mac = ZQSeparateMAC(args)
+    elif args.z_critic_actor_discrete_update:
+        z_mac = ZACSeparateMAC(args)
 
     train_phase = "pretrain"
     # Setup multiagent controllers
@@ -228,16 +230,16 @@ def run_distance_sequential(args, logger):
         "evals": {"vshape": env_info["reward_shape"], },
     }
     z_max_seq_length = 1
-    device = args.device # "cpu" if args.buffer_cpu_only else args.device
+    device = args.device  # "cpu" if args.buffer_cpu_only else args.device
     z_buffer = ReplayBuffer(z_scheme, groups, args.z_buffer_size, max_seq_length=z_max_seq_length, device=device)
 
     # reinitialize training parameters
     episode = 0
     runner.t_env = 0
     last_log_T = 0
+    last_test_T = -args.test_interval - 1
     z_train_steps = 0
     env_steps_threshold = 0
-    z_train_t_env = 0
 
     # initialize sharing scheme actor and its optimizer
     z_p, z_q = sample_dist_norm(args, train=True)  # initial sharing scheme
@@ -271,7 +273,11 @@ def run_distance_sequential(args, logger):
             else:
                 v = v.to(device)
             actor_train_batch.update({k: v})
-        z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=False)
+
+        if args.z_q_update:
+            z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=False)
+        else:
+            z_p, z_q, _, _ = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=False)
 
         while runner.t_env <= env_steps_threshold:
             episode_batch = runner.run(z_q, z_p, test_mode=False, train_phase=train_phase)
@@ -300,9 +306,14 @@ def run_distance_sequential(args, logger):
         episode_returns = torch.sum(th.tensor(episode_returns, dtype=th.float), dim=0) / args.z_sample_runs
 
         # generate data for training z critic
-        post_transition_train_data = {"cur_z_p": z_p.view(-1), "cur_z_q": z_q.view(-1),
-                                      "cur_z_p_idx": z_p_idx, "cur_z_q_idx": z_q_idx,
-                                      "evals": episode_returns}
+        if args.z_q_update:
+            post_transition_train_data = {"cur_z_p": z_p.view(-1), "cur_z_q": z_q.view(-1),
+                                          "cur_z_p_idx": z_p_idx, "cur_z_q_idx": z_q_idx,
+                                          "evals": episode_returns}
+        else:
+            post_transition_train_data = {"cur_z_p": z_p.view(-1), "cur_z_q": z_q.view(-1),
+                                          "evals": episode_returns}
+
         z_batch.update(post_transition_train_data, ts=0)
         z_buffer.insert_episode_batch(z_batch)
 
@@ -343,6 +354,7 @@ def run_distance_sequential(args, logger):
 
         if (runner.t_env - last_log_T) >= args.log_interval:
             logger.log_stat("episode", episode, runner.t_env)
+            logger.log_stat("z_train_steps", z_train_steps, runner.t_env)
             logger.print_recent_stats()
             last_log_T = runner.t_env
 
@@ -368,7 +380,8 @@ def log_z(z_q, z_p, args, logger, runner, prefix):
 
     for receiver in range(args.n_agents):
         for giver in range(args.n_agents):
-            logger.log_stat("{} giver agent {} to receiver agent {}".format(prefix, giver, receiver), dist[giver][receiver],
+            logger.log_stat("{} giver agent {} to receiver agent {}".format(prefix, giver, receiver),
+                            dist[giver][receiver],
                             runner.t_env)
 
 

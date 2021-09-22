@@ -37,7 +37,8 @@ class MetaLearner:
         # optimiser for z actor if needed
         if args.z_critic_actor_update or args.z_q_update:
             self.z_actors_params = self.z_mac.parameters()
-            self.z_actors_optimisers = [Adam(params=self.z_actors_params[i], lr=args.lr, eps=args.optim_eps) for i
+            self.z_actors_optimisers = [Adam(params=self.z_actors_params[i], lr=args.z_actor_lr, eps=args.optim_eps) for
+                                        i
                                         in range(self.n_agents)]
 
         # agent optimiser(s)
@@ -59,9 +60,8 @@ class MetaLearner:
         if self.args.centralized_social_welfare:
             return self.z_critic(entry)
         # decentralized critic
-        latent_vars = None
-        if self.args.sharing_scheme_encoder:
-            latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
+        latent_vars = self.mac.sample_latent_var(entry["z_q"],
+                                                 entry["z_p"]) if self.args.sharing_scheme_encoder else None
         return sum([self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)])
 
     def get_agent_critic_estimate(self, entry, idx, z_idx):  # returns the estimated utility of individual agent
@@ -89,14 +89,10 @@ class MetaLearner:
                 self.logger.log_stat("z_critic_grad_norm", grad_norm, t_env)
             return
 
-        latent_vars = None
-        if self.args.sharing_scheme_encoder:
-            latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
-
-        if self.args.z_critic_actor_update or self.args.z_critic_gradient_update:
+        # update critics
+        if self.args.z_critic_actor_update or self.args.z_critic_gradient_update or self.args.z_critic_actor_discrete_update:
             for i in range(self.n_agents):
-                z_idx = z[i] if z is not None else None
-                z_val = self.z_critics[i](entry, latent_var=latent_vars, z_idx=z_idx)
+                z_val = self.z_critics[i](entry, latent_var=self._get_latent_vars(entry), z_idx=z[i] if z is not None else None)
                 z_critic_loss = ((z_val - entry["evals"][i]) ** 2).sum()
                 self.z_critic_optimisers[i].zero_grad()
                 z_critic_loss.backward()
@@ -108,7 +104,8 @@ class MetaLearner:
                     self.logger.log_stat("z_critic_loss_agent_{}".format(i), z_critic_loss.item(), t_env)
                     self.logger.log_stat("z_critic_grad_norm_{}".format(i), grad_norm, t_env)
 
-        if self.args.z_critic_actor_update:
+        # update actors in critic actor approach
+        if self.args.z_critic_actor_update or self.args.z_critic_actor_discrete_update:
             for i in range(self.n_agents):
                 z_p_i, prob_z_p_i, z_q_i, prob_z_q_i = self.z_mac.forward_agent(entry, i)
                 data = {"z_p": z_p_i, "z_q": z_q_i}
@@ -119,10 +116,7 @@ class MetaLearner:
                     else:
                         v.to(self.args.device)
                     critic_data.update({k: v})
-                latent_vars = None
-                if self.args.sharing_scheme_encoder:
-                    latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
-                z_val = self.z_critics[i](entry, latent_var=latent_vars)
+                z_val = self.z_critics[i](entry, latent_var=self._get_latent_vars(entry))
                 pg_loss = - z_val * (prob_z_q_i + prob_z_p_i).sum()
                 self.z_actors_optimisers[i].zero_grad()
                 pg_loss.backward()
@@ -134,25 +128,24 @@ class MetaLearner:
                     self.logger.log_stat("z_actors_policy_gradient_agent_{}".format(i), pg_loss.item(), t_env)
                     self.logger.log_stat("z_actors_grad_norm_{}".format(i), grad_norm, t_env)
 
-        elif self.args.z_q_update:
+        elif self.args.z_q_update:  # update policy actor in q learning
             for i in range(self.n_agents):
                 z_p_vals, z_q_vals = self.z_mac.forward_agent(entry, i)
-                # print("z_p_vals shape {}".format(z_p_vals.shape))
-                # print("cur z p index shape {}".format(entry["cur_z_p_idx"].shape))
+                # TODO: Double check the gather
                 chosen_z_p_vals = th.gather(z_p_vals, dim=-1,
                                             index=entry["cur_z_p_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
                 chosen_z_q_vals = th.gather(z_q_vals, dim=-1,
                                             index=entry["cur_z_q_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
                 # print("evals shape {}".format(entry["evals"].shape))
-                loss = (chosen_z_p_vals + chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:,
-                                                            i].detach()).sum()  # fake td_error
+                # fake td_error
+                loss = (chosen_z_p_vals + chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:,i].detach()).sum()
                 self.z_actors_optimisers[i].zero_grad()
                 loss.backward()
                 grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[i], self.args.grad_norm_clip)
                 self.z_actors_optimisers[i].step()
                 is_logging = True  # debugging
                 if is_logging:
-                    self.logger.log_stat("z_actors_policy_gradient_agent_{}".format(i), loss.item(), t_env)
+                    self.logger.log_stat("z_actors_loss_agent_{}".format(i), loss.item(), t_env)
                     self.logger.log_stat("z_actors_grad_norm_{}".format(i), grad_norm, t_env)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):  # train agent models
@@ -166,6 +159,9 @@ class MetaLearner:
         if (episode_num - self.last_target_update_episode) / self.args.target_update_interval >= 1.0:
             self._update_targets()
             self.last_target_update_episode = episode_num
+
+    def _get_latent_vars(self, entry):
+        return self.mac.sample_latent_var(entry["z_q"], entry["z_p"]) if self.args.sharing_scheme_encoder else None
 
     def _train(self, batch: EpisodeBatch, t_env: int):
         # TODO: implement mutual information

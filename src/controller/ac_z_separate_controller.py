@@ -25,6 +25,10 @@ class ZACSeparateMAC:
                                                    # clamp_upper_bound=args.latent_relation_space_upper_bound)
                            for _ in range(self.args.n_agents)]
 
+    def select_z(self, data, t_env, test_mode=False):
+        z_p, prob_z_p, z_q, prob_z_q = self.forward(data)
+        return z_p, z_q, prob_z_p, prob_z_q
+
     def forward(self, data):
         z_p, prob_z_p, z_q, prob_z_q = [], [], [], []
         for i in range(self.n_agents):
@@ -74,8 +78,6 @@ class ZACSeparateMAC:
 
     def _build_z_p_input(self, data):
         inputs = [data["z_p"], data["z_q"]]
-        # print("data[z_p] shape {}".format(data["z_p"].shape))
-        # print("data[z_q] shape {}".format(data["z_q"].shape))
         if len(data["z_p"].shape) != 2:
             bs = data["z_p"].shape[0]
         else:
@@ -160,11 +162,10 @@ class ZQSeparateMAC(ZACSeparateMAC):
 
     def forward_agent(self, data, idx):  # should only be used in training
         z_p_vals = self.forward_z_p(data, idx)
-        # print("cur_z_p shape{}".format(data["cur_z_p"].shape))
         z_q_vals = self.forward_z_q(data, idx, data["cur_z_p"], train=True)
         return z_p_vals, z_q_vals
 
-    def forward(self, data):  # should only be used in training
+    def forward(self, data):  # should only be used in training (but may cause reuse grad bug)
         z_p_vals, z_q_vals = [], []
         for i in range(self.n_agents):
             z_p_val, z_q_val = self.forward_agent(data, i)
@@ -175,13 +176,11 @@ class ZQSeparateMAC(ZACSeparateMAC):
 
     def forward_z_p(self, data, idx):
         z_p_inputs = self._build_z_p_input(data)
-        # print("z_p_inputs shape{}".format(z_p_inputs.shape))
         z_p_q_vals = self.z_p_actors[idx].forward(z_p_inputs)  # [z_dim, div_num]
         return z_p_q_vals
 
     def forward_z_q(self, data, idx, z_p, train=False):
         z_q_inputs = self._build_z_q_input(data, z_p, idx if train else None)
-        # print("z_q_inputs shape{}".format(z_q_inputs.shape))
         z_q_q_vals = self.z_q_actors[idx].forward(z_q_inputs)
         return z_q_q_vals
 
@@ -196,8 +195,7 @@ class ZQSeparateMAC(ZACSeparateMAC):
             chosen_z_p_s.append(z_p)
             chosen_z_p_idx_s.append(chosen_z_p_idx)
             # z_q
-            z_q_outs = self.forward_z_q(data, idx, z_p.clone()).view(1, self.args.latent_relation_space_dim,
-                                                                                -1)
+            z_q_outs = self.forward_z_q(data, idx, z_p.clone()).view(1, self.args.latent_relation_space_dim, -1)
             chosen_z_q_idx = self.z_q_actors_selector.select_action(z_q_outs, t_env=t_env, test_mode=test_mode).view(-1)
             z_q = th.tensor([self.z_options[chosen_z_q_idx[idx]] for idx in range(len(chosen_z_q_idx))]).float()
             chosen_z_q_s.append(z_q)
@@ -211,8 +209,6 @@ class ZQSeparateMAC(ZACSeparateMAC):
 
     def _build_z_p_input(self, data):
         inputs = [data["z_p"], data["z_q"]]
-        # print("data[z_p] shape {}".format(data["z_p"].shape))
-        # print("data[z_q] shape {}".format(data["z_q"].shape))
         if len(data["z_p"].shape) != 1:
             bs = data["z_p"].shape[0]
         else:
@@ -225,7 +221,6 @@ class ZQSeparateMAC(ZACSeparateMAC):
             bs = data["z_p"].shape[0]
         else:
             bs = 1
-        # print("z_p new shape {}".format(z_p.shape))
         if idx is not None:  # for training, shotgun fix
             z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
         inputs = [data["z_p"], data["z_q"], z_p]
