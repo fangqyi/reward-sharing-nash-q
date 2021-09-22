@@ -271,7 +271,7 @@ def run_distance_sequential(args, logger):
             else:
                 v = v.to(device)
             actor_train_batch.update({k: v})
-        z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, z_train_steps)
+        z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=False)
 
         while runner.t_env <= env_steps_threshold:
             episode_batch = runner.run(z_q, z_p, test_mode=False, train_phase=train_phase)
@@ -320,27 +320,11 @@ def run_distance_sequential(args, logger):
         if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
             last_test_T = runner.t_env
             for _ in range(n_test_runs):
-                runner.run(z_q, z_p, test_mode=True, train_phase=train_phase)
+                test_z_p, test_z_q, _, _ = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=False)
+                log_z(test_z_q, test_z_p, args, logger, runner, prefix="test")
+                runner.run(test_z_q, test_z_p, test_mode=True, train_phase=train_phase)
 
-        # in the desperation to understand what is going on
-        def softmax(vector):
-            e = [math.exp(x) for x in vector]
-            return [x / sum(e) for x in e]
-
-        def distance(a, b):
-            ret = numpy.linalg.norm([a - b], ord=2)
-            return ret
-
-        z_q_cp = z_q.clone().view(args.n_agents, -1).detach().cpu().numpy()
-        z_p_cp = z_p.clone().view(args.n_agents, -1).detach().cpu().numpy()
-        dist = []
-        for giver in range(args.n_agents):
-            dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
-
-        for receiver in range(args.n_agents):
-            for giver in range(args.n_agents):
-                logger.log_stat("giver agent {} to receiver agent {}".format(giver, receiver), dist[giver][receiver],
-                                runner.t_env)
+        log_z(z_q, z_p, args, logger, runner, prefix="train")
 
         t_max = args.env_steps_every_z * args.total_z_training_steps
         logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
@@ -364,6 +348,28 @@ def run_distance_sequential(args, logger):
 
     runner.close_env()
     logger.console_logger.info("Finished Training")
+
+
+def log_z(z_q, z_p, args, logger, runner, prefix):
+    # in the desperation to understand what is going on
+    def softmax(vector):
+        e = [math.exp(x) for x in vector]
+        return [x / sum(e) for x in e]
+
+    def distance(a, b):
+        ret = numpy.linalg.norm([a - b], ord=2)
+        return ret
+
+    z_q_cp = z_q.clone().view(args.n_agents, -1).detach().cpu().numpy()
+    z_p_cp = z_p.clone().view(args.n_agents, -1).detach().cpu().numpy()
+    dist = []
+    for giver in range(args.n_agents):
+        dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
+
+    for receiver in range(args.n_agents):
+        for giver in range(args.n_agents):
+            logger.log_stat("{} giver agent {} to receiver agent {}".format(prefix, giver, receiver), dist[giver][receiver],
+                            runner.t_env)
 
 
 def sample_dist_norm(args, train=False, autograd=False):
