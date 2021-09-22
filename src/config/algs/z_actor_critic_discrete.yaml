@@ -1,0 +1,84 @@
+critic_hidden_sizes: [64, 64]
+learner: "meta_learner"
+runner: "dist_episode"
+mac: "separate_dist"
+total_z_training_steps: 10000 # 15000
+env_steps_every_z: 10000
+z_sample_runs: 10
+
+pretrain_epsilon_start: 1.0
+pretrain_epsilon_finish: 0.05
+pretrain_epsilon_anneal_time: 1500000
+
+train_epsilon_start: 1.0
+train_epsilon_finish: 0.05
+train_epsilon_anneal_time: 8000
+
+z_train_epsilon_start: 1.0
+z_train_epsilon_finish: 0.05
+z_train_epsilon_anneal_time: 7500
+
+buffer_size: 10000
+z_buffer_size: 100
+
+z_batch_size: 16
+
+#
+meta_t_max:
+meta_type: "distance_latent"
+latent_relation_space_dim: 1
+latent_relation_space_upper_bound: 10.0
+latent_relation_space_lower_bound: 0.0
+relation_space_div_interval: 1
+latent_var_dim: 2
+latent_encoder_hidden_sizes: [64, 64]
+pretrained_task_num: 32
+total_pretrain_steps: 2000000
+z_critic_lr: 0.001
+z_actor_lr: 0.001
+z_update_lr: 0.05  # only for critic gradient approach
+
+# update the target network every {} episodes
+target_update_interval: 30
+
+# use the Q_Learner to train
+agent_output_type: "q"
+
+is_obs_image: True  # true for cleanup env
+
+# conv params
+kernel_size: 3
+stride: 1
+conv_out_dim: 8
+rnn_hidden_dim: 128
+name: "dist_meta_learning_cleanup_decentralized"
+
+agent: "rnn_agent_image_vec"
+
+# centralized critic and altruistic agents
+centralized_social_welfare: False
+separate_agents: True
+obs_agent_id: False
+sharing_scheme_encoder: False
+mutual_information_reinforcement: False
+inference_net_hidden_sizes: [64, 64]
+
+# optimize sharing scheme in training:
+z_critic_gradient_update: False
+z_critic_actor_update: False
+z_critic_actor_discrete_update: False
+z_q_update: True
+
+# loading model from environment
+load_pretrained_model: True
+pretrained_model_load_path: "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_decentralized__2021-08-24_14-19-30/2407650"
+
+# debug: test if deterministic sharing schemes improve performance
+deterministic_pretrained_tasks: True
+div_num: 2
+
+# debug: hardcoded pretraining sharing schemes
+hardcoded_pretrained_tasks: False
+hardcoded_tasks_zp: [[0,10], [0,0]]
+hardcoded_tasks_zq: [[0,10], [0,0]]
+num_hc_pret_tasks: 2
