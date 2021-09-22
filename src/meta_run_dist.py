@@ -322,6 +322,7 @@ def run_distance_sequential(args, logger):
             z_train_steps += 1
 
         # Execute test runs once in a while
+        print("{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)
         if (runner.t_env - last_test_T) / args.z_test_interval >= 1.0:
             last_test_T = runner.t_env
@@ -332,6 +333,7 @@ def run_distance_sequential(args, logger):
                 if not logged:
                     log_z(test_z_q, test_z_p, args, logger, runner, prefix="test")
                     logged = True
+        print("{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
 
         log_z(z_q, z_p, args, logger, runner, prefix="train")
 
