@@ -18,13 +18,13 @@ z_train_epsilon_start: 1.0
 z_train_epsilon_finish: 0.05
 z_train_epsilon_anneal_time: 7500
 
+
 buffer_size: 10000
 z_buffer_size: 100
-
+z_test_interval: 10000
 z_batch_size: 32
 
-#
-meta_t_max:
+
 meta_type: "distance_latent"
 latent_relation_space_dim: 1
 latent_relation_space_upper_bound: 10.0
@@ -34,8 +34,8 @@ latent_var_dim: 2
 latent_encoder_hidden_sizes: [64, 64]
 pretrained_task_num: 32
 total_pretrain_steps: 2000000
-z_critic_lr: 0.001
-z_actor_lr: 0.001
+z_critic_lr: 0.0005
+z_actor_lr: 0.0005  # does it prevent gradient blowup
 z_update_lr: 0.05  # only for critic gradient approach
 
 # update the target network every {} episodes
