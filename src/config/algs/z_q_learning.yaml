@@ -3,7 +3,7 @@ learner: "meta_learner"
 runner: "dist_episode"
 mac: "separate_dist"
 total_z_training_steps: 10000 # 15000
-env_steps_every_z: 1000
+env_steps_every_z: 10000
 z_sample_runs: 10
 
 pretrain_epsilon_start: 1.0
@@ -12,7 +12,7 @@ pretrain_epsilon_anneal_time: 1500000
 
 train_epsilon_start: 1.0
 train_epsilon_finish: 0.05
-train_epsilon_anneal_time: 500
+train_epsilon_anneal_time: 7500
 
 z_train_epsilon_start: 1.0
 z_train_epsilon_finish: 0.05
@@ -23,7 +23,7 @@ z_buffer_size: 100
 z_test_interval: 10000
 z_batch_size: 32
 
-# 
+#
 meta_t_max:
 meta_type: "distance_latent"
 latent_relation_space_dim: 1
