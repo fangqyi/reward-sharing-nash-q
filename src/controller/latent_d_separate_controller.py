@@ -60,7 +60,8 @@ class SeparateLatentMAC:
             enc_div = self.latent_encoders[idx].compute_kl_div() * self.args.encoder_kl_div_weight
             enc_d = self.latent_encoders[idx].get_distribution()
             inf_d = self.inference_nets[idx].get_distribution()
-            ce = enc_d.entropy().sum(dim=-1).mean() * self.args.encoder_h_weight + kl_divergence(enc_d, inf_d).sum(dim=-1).mean()*self.args.ce_kl_weight
+            ce = enc_d.entropy().sum(dim=-1).mean() * self.args.encoder_h_weight + kl_divergence(enc_d, inf_d).sum(
+                dim=-1).mean() * self.args.ce_kl_weight
             ce = th.clamp(ce, max=2e3)
             ce = th.log(1 + th.exp(ce))
             self.inference_nets[idx].reset()
@@ -71,7 +72,9 @@ class SeparateLatentMAC:
             self.latent_encoders[idx].reset()
             return enc_div
         elif self.args.mutual_information_reinforcement and not self.args.sharing_scheme_encoder:
-            ce = (- 1.0/self.args.num_hc_pret_tasks * th.log(self.inference_nets[idx](self._build_inference_inputs_agent(idx)).gather(1, z_idx.reshape(-1, 1)))).mean()
+            ce = (- 1.0 / self.args.num_hc_pret_tasks * th.log(
+                self.inference_nets[idx](self._build_inference_inputs_agent(idx)).gather(1,
+                                                                                         z_idx.reshape(-1, 1)))).mean()
             ce = ce * self.args.ce_kl_weight
             return ce
 
@@ -217,11 +220,13 @@ class SeparateLatentMAC:
 
         latent_input_shape, latent_output_shape, latent_hidden_sizes = self._get_latent_shapes()
         if self.args.sharing_scheme_encoder:
-            self.latent_encoders = [MLPMultiGaussianEncoder(latent_input_shape, latent_output_shape, latent_hidden_sizes)
-                                for _ in range(self.n_agents)]
+            self.latent_encoders = [
+                MLPMultiGaussianEncoder(latent_input_shape, latent_output_shape, latent_hidden_sizes)
+                for _ in range(self.n_agents)]
             if self.args.mutual_information_reinforcement:
                 self.inference_nets = [MLPMultiGaussianEncoder(self.agents[0].get_processed_output_shape(),
-                                                               latent_output_shape, self.args.inference_net_hidden_sizes)
+                                                               latent_output_shape,
+                                                               self.args.inference_net_hidden_sizes)
                                        for _ in range(self.n_agents)]
         else:
             if self.args.mutual_information_reinforcement:
@@ -246,8 +251,8 @@ class SeparateLatentMAC:
         if self.args.sharing_scheme_encoder:
             vec_inputs.append(self.sample_batch_latent_var(batch, t))
         else:
-            vec_inputs.extend([batch["z_q"][:, t-1].reshape(-1, self.args.latent_relation_space_dim * self.n_agents),
-                               batch["z_p"][:, t-1].reshape(-1, self.args.latent_relation_space_dim * self.n_agents)])
+            vec_inputs.extend([batch["z_q"][:, t - 1].reshape(-1, self.args.latent_relation_space_dim * self.n_agents),
+                               batch["z_p"][:, t - 1].reshape(-1, self.args.latent_relation_space_dim * self.n_agents)])
 
         # process observation
         obs = batch["obs"][:, t]

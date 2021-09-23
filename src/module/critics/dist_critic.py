@@ -6,9 +6,9 @@ from module.utils.components import MLP
 from utils.utils import identity, fanin_init
 
 
-class CentralizedDistCritic(nn.Module):  # Centralized critic that predicts the social welfare
+class CenDistCritic(nn.Module):  # Centralized critic that predicts the social welfare
     def __init__(self, scheme, args):
-        super(CentralizedDistCritic, self).__init__()
+        super(CenDistCritic, self).__init__()
 
         self.args = args
         self.n_actions = args.n_actions
@@ -56,9 +56,9 @@ class CentralizedDistCritic(nn.Module):  # Centralized critic that predicts the 
         return self.n_agents * self.args.latent_relation_space_dim * 2  # z_q, z_q
 
 
-class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts individual utilities
+class DecDistCritic(nn.Module):  # decentralized critic for individual rewards on a sharing scheme
     def __init__(self, scheme, args):
-        super(DecentralizedDistCritic, self).__init__()
+        super(DecDistCritic, self).__init__()
 
         self.args = args
         self.n_actions = args.n_actions
@@ -88,17 +88,25 @@ class DecentralizedDistCritic(nn.Module):  # Decentralized critic that predicts 
     def _build_inputs(self, batch, latent_var=None, z_idx=None):
         # assume latent_state: [bs, latent_state_size]
         # obs: [bs, seq_len, n_agents, obs_size]
-        inputs = [batch["z_p"], batch["z_q"], z_idx]
+        if len(batch["z_p"].shape) >= 2:
+            bs = batch["z_p"].shape[0]
+        else:
+            bs = 1
+        inputs = [batch["z_p"], batch["z_q"]]
         if self.args.sharing_scheme_encoder:
             inputs.append(latent_var)
+        # used for critic updating agent's sharing scheme gradient (is it actually working?)
+        if self.args.z_critic_gradient_update:
+            inputs.append(z_idx)
 
-        inputs = torch.cat([x.reshape(-1) for x in inputs], dim=-1)
+        inputs = torch.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
+        # print("inputs shape {}".format(inputs.shape))
         return inputs
 
     def _get_input_shape(self):
         shape = self.args.latent_relation_space_dim * 2 * self.n_agents
-        if self.args.sharing_scheme_encoder:
-            shape += self.args.latent_var_dim  # z_q, z_q
-        if self.args.separate_agents:
+        if self.args.sharing_scheme_encoder:  # need to add encoded content
+            shape += self.args.latent_var_dim  # encoded z_q, z_q
+        if self.args.z_critic_gradient_update:
             shape += self.args.latent_relation_space_dim * 2
         return shape

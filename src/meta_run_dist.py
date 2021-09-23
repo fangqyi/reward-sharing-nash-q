@@ -2,29 +2,30 @@
 Code framework adapted from https://github.com/TonghanWang/ROMA
 """
 
-# decentralized, self-interested agents 
+# decentralized, self-interested agents
+# in training, sharing scheme is represented as a gaussian distribution
 
 import datetime
+import math
 import os
 import pprint
-import time
 import threading
+from functools import partial
+from os.path import dirname, abspath
+from types import SimpleNamespace as SN
 
+import numpy
 import torch
 import torch as th
-from types import SimpleNamespace as SN
-from utils.logging import Logger
-from utils.timehelper import time_left, time_str
-from os.path import dirname, abspath
 from torch.distributions.uniform import Uniform
-from torch.optim import Adam
-from torch.nn.utils import clip_grad_norm_
 
+from components.episode_buffer import ReplayBuffer, EpisodeBatch
+from components.transforms import OneHot
+from controller.ac_z_separate_controller import ZACDiscreteSeparateMAC, ZQSeparateMAC, ZACSeparateMAC
+from controller.d_separate_controller import SeparateMAC
 from learner import REGISTRY as le_REGISTRY
 from runner import REGISTRY as r_REGISTRY
-from controller import REGISTRY as mac_REGISTRY
-from components.episode_buffer import ReplayBuffer
-from components.transforms import OneHot
+from utils.logging import Logger
 
 
 # torch.autograd.set_detect_anomaly(True)
@@ -122,16 +123,23 @@ def run_distance_sequential(args, logger):
                           preprocess=preprocess,
                           device="cpu" if args.buffer_cpu_only else args.device)
 
-    train_phase = "pretrain"
+    # Set up controller for sharing scheme
+    if args.z_critic_actor_discrete_update:
+        z_mac = ZACDiscreteSeparateMAC(args)
+    elif args.z_q_update:
+        z_mac = ZQSeparateMAC(args)
+    elif args.z_critic_actor_update:
+        z_mac = ZACSeparateMAC(args)
 
-    # Setup multiagent controller here
-    mac = mac_REGISTRY[args.mac](buffer.scheme, groups, args, train_phase)
+    train_phase = "pretrain"
+    # Setup multiagent controllers
+    mac = SeparateMAC(buffer.scheme, groups, args, train_phase)
 
     # Give runner the scheme
     runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, mac=mac)
 
     # Learner
-    learner = le_REGISTRY[args.learner](mac, buffer.scheme, logger, args)
+    learner = le_REGISTRY[args.learner](mac, buffer.scheme, logger, args, z_mac=z_mac)
 
     if args.use_cuda:
         learner.cuda()
@@ -141,9 +149,6 @@ def run_distance_sequential(args, logger):
     last_test_T = -args.test_interval - 1
     last_log_T = 0
     model_save_time = 0
-
-    start_time = time.time()
-    last_time = start_time
 
     ############################### meta-training agent models on proposed sharing scheme #########################
 
@@ -174,11 +179,9 @@ def run_distance_sequential(args, logger):
 
             if buffer.can_sample(args.batch_size):
                 episode_sample = buffer.sample(args.batch_size)
-
                 # Truncate batch to only filled timesteps
                 max_ep_t = episode_sample.max_t_filled()
                 episode_sample = episode_sample[:, :max_ep_t]
-
                 if episode_sample.device != args.device:
                     episode_sample.to(args.device)
 
@@ -209,116 +212,135 @@ def run_distance_sequential(args, logger):
                 learner.save_models(save_path)
             episode += args.batch_size_run
 
-
     ############################### optimizing sharing structure #########################
 
     logger.console_logger.info(
         "Beginning training for {} timesteps".format(args.total_z_training_steps * args.env_steps_every_z))
 
+    # Scheme for sharing schemes
+    z_scheme = {
+        "z_q": {"vshape": (args.latent_relation_space_dim * args.n_agents,), "dtype": th.float},
+        "z_p": {"vshape": (args.latent_relation_space_dim * args.n_agents,), "dtype": th.float},
+        "z_p_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
+        "z_q_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
+        "cur_z_p": {"vshape": (args.latent_relation_space_dim * args.n_agents,), "dtype": th.float},
+        "cur_z_q": {"vshape": (args.latent_relation_space_dim * args.n_agents,), "dtype": th.float},
+        "cur_z_p_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
+        "cur_z_q_idx": {"vshape": (args.latent_relation_space_dim,), "group": "agents", "dtype": th.int64},
+        "evals": {"vshape": env_info["reward_shape"], },
+    }
+    z_max_seq_length = 1
+    device = args.device  # "cpu" if args.buffer_cpu_only else args.device
+    z_buffer = ReplayBuffer(z_scheme, groups, args.z_buffer_size, max_seq_length=z_max_seq_length, device=device)
+
     # reinitialize training parameters
     episode = 0
     runner.t_env = 0
     last_log_T = 0
+    last_test_T = -args.test_interval - 1
     z_train_steps = 0
     env_steps_threshold = 0
 
-    # initialize sharing scheme and its optimizer
-    if not args.separate_agents:
-        z_p, z_q = sample_dist_norm(args, num=1, train=True)
-        params = [z_p, z_q]
-        z_optimiser = Adam(params=params, lr=args.z_update_lr, eps=args.optim_eps)
-    else:
-        z = sample_dist_norm(args, train=True)
-        z_optimisers = [Adam(params=[z[idx]], lr=args.z_update_lr, eps=args.optim_eps) for idx in range(args.n_agents)]
+    # initialize sharing scheme actor and its optimizer
+    z_p, z_q = sample_dist_norm(args, train=True)  # initial sharing scheme
+    z_p_idx = th.tensor([0, 0], dtype=th.int64).to(device)
+    z_q_idx = th.tensor([0, 0], dtype=th.int64).to(device)
+    # z_p, z_q = torch.tensor([0, 0], dtype=th.float).view(args.n_agents, args.latent_relation_space_dim).to(args.device),\
+    #            torch.tensor([0, 10], dtype=th.float).view(args.n_agents, args.latent_relation_space_dim).to(args.device)
 
-    device = "cpu" if args.buffer_cpu_only else args.device
     buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
                           preprocess=preprocess,
                           device=device)
 
+    new_z_batch = partial(EpisodeBatch, z_scheme, groups, 1, z_max_seq_length, device=device)
+
     train_phase = "train"
     while z_train_steps <= args.total_z_training_steps:
 
+        # initialize for every new sharing scheme
         env_steps_threshold += args.env_steps_every_z
+        z_batch = new_z_batch()
         mac.init_epsilon_schedule(train_phase)
+
+        # prepare for data
+        pre_transition_train_data = {"z_q": z_q.clone().view(-1), "z_p": z_p.clone().view(-1),
+                                     "z_q_idx": z_q_idx.clone(), "z_p_idx": z_p_idx.clone()}
+        z_batch.update(pre_transition_train_data, ts=0)
+        actor_train_batch = {}
+        for k, v in pre_transition_train_data.items():
+            if not isinstance(v, th.Tensor):
+                v = th.tensor(v, dtype=th.float, device=device)
+            else:
+                v = v.to(device)
+            actor_train_batch.update({k: v})
+
+        if args.z_q_update:
+            z_p, z_q, z_p_idx, z_q_idx = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=False)
+        else:
+            z_p, z_q, _, _ = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=False)
+
         while runner.t_env <= env_steps_threshold:
-            # Run for a whole episode at a time
-            if args.separate_agents:
-                z_q, z_p = [z[idx][0] for idx in range(args.n_agents)], [z[idx][1] for idx in range(args.n_agents)]
-                z_q = torch.stack(z_q, dim=0).detach()
-                z_p = torch.stack(z_p, dim=0).detach()
             episode_batch = runner.run(z_q, z_p, test_mode=False, train_phase=train_phase)
             buffer.insert_episode_batch(episode_batch)
 
             if buffer.can_sample(args.batch_size):
                 episode_sample = buffer.sample(args.batch_size)
-
                 # Truncate batch to only filled timesteps
                 max_ep_t = episode_sample.max_t_filled()
                 episode_sample = episode_sample[:, :max_ep_t]
-
                 if episode_sample.device != args.device:
                     episode_sample.to(args.device)
 
                 learner.train(episode_sample, runner.t_env, episode)
 
-            if (runner.t_env - last_log_T) >= args.log_interval:
-                logger.log_stat("episode", episode, runner.t_env)
-                logger.print_recent_stats()
-                last_log_T = runner.t_env
-
+        # sample for optimizing z critic
         episode_returns = []
         for _ in range(args.z_sample_runs):
             episode_returns.append(
                 runner.run(z_q, z_p, test_mode=True, sample_return_mode=True, train_phase=train_phase))
+        episode_returns = torch.sum(th.tensor(episode_returns, dtype=th.float), dim=0) / args.z_sample_runs
 
-        data = {"z_p": z_p, "z_q": z_q, "evals": episode_returns}
+        # generate data for training z critic
+        if args.z_q_update:
+            post_transition_train_data = {"cur_z_p": z_p.view(-1), "cur_z_q": z_q.view(-1),
+                                          "cur_z_p_idx": z_p_idx, "cur_z_q_idx": z_q_idx,
+                                          "evals": episode_returns}
+        else:
+            post_transition_train_data = {"cur_z_p": z_p.view(-1), "cur_z_q": z_q.view(-1),
+                                          "evals": episode_returns}
 
-        critic_train_batch = {}
-        for k, v in data.items():
-            if not isinstance(v, th.Tensor):
-                v = th.tensor(v, dtype=th.long, device=args.device)
-            else:
-                v.to(args.device)
-            critic_train_batch.update({k: v})
+        z_batch.update(post_transition_train_data, ts=0)
+        z_buffer.insert_episode_batch(z_batch)
 
-        # train z critic
-        critic_train_batch["evals"] = torch.sum(critic_train_batch["evals"], dim=0) / args.z_sample_runs
-        learner.z_train(critic_train_batch, z_train_steps, z)
+        if z_buffer.can_sample(args.z_batch_size):
+            z_sample = z_buffer.sample(args.z_batch_size)
+            if z_sample.device != args.device:
+                z_sample.to(args.device)
 
-        # update z_q, z_p
-
-        grad_norm = []
-        total_val = torch.tensor(0.0).view(1).to(args.device)
-        for idx in range(args.n_agents):
-            val = - learner.get_agent_critic_estimate(critic_train_batch, idx, z[idx])
-            total_val += val
-            z_optimisers[idx].zero_grad()
-            val.backward()
-            grad_norm.append(clip_grad_norm_(z[idx], args.grad_norm_clip))
-            z_optimisers[idx].step()
-            # z[idx] = torch.clamp(z[idx].data,
-            #                      min=args.latent_relation_space_lower_bound,
-            #                      max=args.latent_relation_space_upper_bound)
-            grad_norm = sum(grad_norm) / args.n_agents
-        z_train_steps += 1
-
-        t_max = args.env_steps_every_z * args.total_z_training_steps
-        logger.log_stat("Estimated social welfare", - total_val.item(), runner.t_env)
-        logger.log_stat("z_grad_norm", grad_norm, runner.t_env)
-        logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
-        logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
-        logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
-        logger.console_logger.info("estimated time left: {}. Time passed: {}".format(
-            time_left(last_time, last_test_T, runner.t_env, t_max), time_str(time.time() - start_time)))
-        last_time = time.time()
+            # train z critic and actors
+            learner.z_train(z_sample, z_train_steps)
+            z_train_steps += 1
 
         # Execute test runs once in a while
+        print("{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)
-        if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
+        if (runner.t_env - last_test_T) / args.z_test_interval >= 1.0:
             last_test_T = runner.t_env
+            logged = False
             for _ in range(n_test_runs):
-                runner.run(z_q, z_p, test_mode=True, train_phase=train_phase)
+                test_z_p, test_z_q, _, _ = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=False)
+                runner.run(test_z_q, test_z_p, test_mode=True, train_phase=train_phase)
+                if not logged:
+                    log_z(test_z_q, test_z_p, args, logger, runner, prefix="test")
+                    logged = True
+        print("{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
+
+        log_z(z_q, z_p, args, logger, runner, prefix="train")
+
+        t_max = args.env_steps_every_z * args.total_z_training_steps
+        # logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
+        # logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
+        logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
 
         if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
             model_save_time = runner.t_env
@@ -326,14 +348,12 @@ def run_distance_sequential(args, logger):
             os.makedirs(save_path, exist_ok=True)
             logger.console_logger.info("Saving models to {}".format(save_path))
 
-            # learner should handle saving/loading -- delegate actor save/load to mac,
-            # use appropriate filenames to do critics, optimizer states
-            learner.save_models(save_path)
+            learner.save_models(save_path, train=True)  # also save z_critic and etc
 
-        episode += args.batch_size_run
-
+        episode += 1
         if (runner.t_env - last_log_T) >= args.log_interval:
             logger.log_stat("episode", episode, runner.t_env)
+            logger.log_stat("z_train_steps", z_train_steps, runner.t_env)
             logger.print_recent_stats()
             last_log_T = runner.t_env
 
@@ -341,27 +361,52 @@ def run_distance_sequential(args, logger):
     logger.console_logger.info("Finished Training")
 
 
-def sample_dist_norm(args, num=None, train=False):
+def log_z(z_q, z_p, args, logger, runner, prefix):
+    # in the desperation to understand what is going on
+    def softmax(vector):
+        e = [math.exp(x) for x in vector]
+        return [x / sum(e) for x in e]
+
+    def distance(a, b):
+        ret = numpy.linalg.norm([a - b], ord=2)
+        return ret
+
+    z_q_cp = z_q.clone().view(args.n_agents, -1).detach().cpu().numpy()
+    z_p_cp = z_p.clone().view(args.n_agents, -1).detach().cpu().numpy()
+    dist = []
+    for giver in range(args.n_agents):
+        dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
+
+    for receiver in range(args.n_agents):
+        for giver in range(args.n_agents):
+            logger.log_stat("{} giver agent {} to receiver agent {}".format(prefix, giver, receiver),
+                            dist[giver][receiver],
+                            runner.t_env)
+
+
+def sample_dist_norm(args, train=False, autograd=False):
     # [(z_q, z_p)]: z_q: [n_agents][space_dim]
-    lower = args.latent_relation_space_lower_bound
-    upper = args.latent_relation_space_upper_bound
+    l = torch.tensor([args.latent_relation_space_lower_bound], dtype=torch.float)
+    u = torch.tensor([args.latent_relation_space_upper_bound], dtype=torch.float)
+    if autograd:  # weird fix
+        l.to(args.device)
+        u.to(args.device)
+    d = Uniform(low=l, high=u)
 
     dim_num = args.latent_relation_space_dim
     size = torch.Size([args.n_agents, dim_num])
-    if num is None and not train:  # for pretrain
-        distribution = Uniform(torch.tensor([lower], dtype=torch.float), torch.tensor([upper], dtype=torch.float))
-        return [(distribution.sample(size).view(1, args.n_agents, dim_num),
-                 distribution.sample(size).view(1, args.n_agents, dim_num))
-                for _ in range(args.pretrained_task_num)]
-    else:  # for train
-        distribution = Uniform(torch.tensor([lower], dtype=torch.float).to(args.device),
-                               torch.tensor([upper], dtype=torch.float).to(args.device))
-        size = torch.Size([2, dim_num])
-        z = []
-        for idx in range(args.n_agents):
-            z.append(distribution.sample(size).view(2, dim_num))
-            z[idx].requires_grad = True
-        return z
+
+    # sample for meta-training
+    if not train:
+        return [(d.sample(size).view(1, args.n_agents, dim_num),
+                 d.sample(size).view(1, args.n_agents, dim_num)) for _ in range(args.pretrained_task_num)]
+
+    # sample for training
+    z = (d.sample(size).view(args.n_agents, dim_num).to(args.device),
+         d.sample(size).view(args.n_agents, dim_num).to(args.device))
+    z[0].requires_grad = autograd
+    z[1].requires_grad = autograd
+    return z
 
 
 # test on simple hardcoded example
