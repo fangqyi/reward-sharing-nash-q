@@ -139,7 +139,7 @@ class MetaLearner:
                                             index=entry["cur_z_q_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
                 # print("evals shape {}".format(entry["evals"].shape))
                 # fake td_error
-                loss = (chosen_z_p_vals + chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:,i].detach()).sum()
+                loss = ((chosen_z_p_vals + chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:,i].detach())**2).sum()
                 self.z_actors_optimisers[i].zero_grad()
                 loss.backward()
                 grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[i], self.args.grad_norm_clip)
