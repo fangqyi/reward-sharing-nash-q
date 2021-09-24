@@ -103,10 +103,9 @@ class ZACDiscreteSeparateMAC(ZACSeparateMAC):
     def __init__(self, args):
         super(ZACDiscreteSeparateMAC, self).__init__(args)
         self.relation_space_div_interval = args.relation_space_div_interval
-        self.z_options = [args.latent_relation_space_lower_bound + idx * args.relation_space_div_interval
-                          for idx in range(int(args.latent_relation_space_lower_bound),
-                                           int(args.latent_relation_space_upper_bound),
-                                           int(args.relation_space_div_interval))]  # this is horrible
+        self.z_options = list(range(int(args.latent_relation_space_lower_bound),
+                                    int(args.latent_relation_space_upper_bound),
+                                    int(args.relation_space_div_interval)))  # this is horrible
 
         output_size = args.latent_relation_space_dim * len(self.z_options)
         self.z_p_actors = [MultiSoftmaxMLP(input_size=args.latent_relation_space_dim * args.n_agents * 2,
