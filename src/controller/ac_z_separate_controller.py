@@ -1,8 +1,7 @@
 import torch as th
 
-from components.action_selectors import EpsilonGreedyActionSelector
 from module.utils import MLPMultiGaussianEncoder
-from module.utils.components import MultiSoftmaxMLP, MultiMLP
+from module.utils.components import MultiSoftmaxMLP
 
 
 class ZACSeparateMAC:
