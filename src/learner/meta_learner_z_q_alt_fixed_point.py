@@ -42,7 +42,7 @@ class MetaLearner:
             self.log_stats_t = t_env
 
         for i in range(self.n_agents):
-            z_p_vals, z_q_vals = self.z_mac.forward_agent(entry, i)
+            z_p_vals, z_q_vals = self.z_mac.forward_agent(entry, i, is_train="True")
             # TODO: Double check the gather
             chosen_z_p_vals = th.gather(z_p_vals, dim=-1,
                                         index=entry["cur_z_p_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
