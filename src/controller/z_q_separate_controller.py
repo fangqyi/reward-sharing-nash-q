@@ -151,7 +151,7 @@ class ZQSeparateMAC():
         print(filtered_inputs)
         if is_train:
             z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
-        inputs.append(z_p)
+        filtered_inputs.append(z_p)
         print("z_p")
         print(z_p)
         print(z_p.shape)
