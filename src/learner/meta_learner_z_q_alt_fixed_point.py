@@ -283,11 +283,3 @@ class MetaLearner:
             self.optimisers[idx].load_state_dict(
                 th.load("{}/opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
 
-        if train:  # also load z critic(s) and respective optimisers
-            for idx in range(self.n_agents):
-                self.z_critic.load_state_dict(
-                    th.load("{}/z_critic{}.th".format(path, idx), map_location=lambda storage, loc: storage))
-                self.z_critic_optimiser.load_state_dict(
-                    th.load("{}/z_critic_opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
-
-        self.z_mac.load_models(path)
