@@ -276,7 +276,7 @@ class MultiMLP(SoftmaxMLP):
             output[0] = F.softmax(output[0], dim=-1)
         else:
             output = output.view(-1, self.head_num)
-            output = F.softmax(output, dim=-1)
+            # output = F.softmax(output, dim=-1)
         return output
 
     def sample(self, input, return_preactivation=False, get_max=False):

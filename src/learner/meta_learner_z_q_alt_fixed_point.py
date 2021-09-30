@@ -49,6 +49,8 @@ class MetaLearner:
             print(z_q_vals)
             print("z_q_idx")
             print(entry["cur_z_q_idx"])
+            print("chosen")
+            print(chosen_z_q_vals)
             # print("evals shape {}".format(entry["evals"].shape))
             # fake td_error
             if i == self.n_agents - 1 and self.args.latent_relation_space_dim == 1:
