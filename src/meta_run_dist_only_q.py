@@ -372,13 +372,13 @@ def log_z(z_q, z_p, args, logger, runner, prefix):
 
     upper = args.latent_relation_space_upper_bound
     lower = args.latent_relation_space_lower_bound
-    range = upper - lower + 1e-4
+    rng = upper - lower + 1e-4
 
     z_q_cp = z_q.clone().view(args.n_agents, -1).detach().cpu().numpy()
     z_p_cp = z_p.clone().view(args.n_agents, -1).detach().cpu().numpy()
     dist = []
     for giver in range(args.n_agents):
-        dist.append(softmax([range - distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
+        dist.append(prop([rng - distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
 
     for receiver in range(args.n_agents):
         for giver in range(args.n_agents):
