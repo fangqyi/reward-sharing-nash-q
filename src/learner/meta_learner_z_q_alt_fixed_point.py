@@ -44,15 +44,18 @@ class MetaLearner:
         for i in range(self.n_agents):
             z_p_vals, z_q_vals = self.z_mac.forward_agent(entry, i, is_train="True")
             # TODO: Double check the gather
-            chosen_z_p_vals = th.gather(z_p_vals, dim=-1,
-                                        index=entry["cur_z_p_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
-            chosen_z_q_vals = th.gather(z_q_vals, dim=-1,
-                                        index=entry["cur_z_q_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
+            chosen_z_q_vals = th.gather(z_q_vals, dim=-1, index=entry["cur_z_q_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
+            print("q_vals")
+            print(z_q_vals)
+            print("z_q_idx")
+            print(entry["cur_z_q_idx"])
             # print("evals shape {}".format(entry["evals"].shape))
             # fake td_error
-            if i == self.n_agents - 1 and self.args.latent_relation_space_dim:
+            if i == self.n_agents - 1 and self.args.latent_relation_space_dim == 1:
                 loss = (chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:, i].detach()).sum()
             else:
+                chosen_z_p_vals = th.gather(z_p_vals, dim=-1,
+                                            index=entry["cur_z_p_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
                 loss = (chosen_z_p_vals + chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:, i].detach()).sum()
             self.z_actors_optimisers[i].zero_grad()
             loss.backward()
