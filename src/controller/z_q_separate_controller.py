@@ -37,6 +37,7 @@ class ZQSeparateMAC():
                                     hidden_sizes=args.latent_encoder_hidden_sizes,
                                     head_num=len(self.z_options))
                            for _ in range(self.args.n_agents)]
+        print("input size: {}".format(input_size + args.latent_relation_space_dim))
         self.z_p_actors_selector = EpsilonGreedyActionSelector(self.args, "z_train")
         self.z_q_actors_selector = EpsilonGreedyActionSelector(self.args, "z_train")
 
@@ -141,6 +142,7 @@ class ZQSeparateMAC():
             z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
         inputs.append(z_p)
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
+        print(inputs.shape)
         return inputs
 
     def _forward_z_p(self, data, idx):
