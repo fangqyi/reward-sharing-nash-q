@@ -146,7 +146,7 @@ class ZQSeparateMAC():
         print("z_p")
         print(z_p)
         print(z_p.shape)
-        inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
+        inputs = th.cat([x.reshape(bs, -1) for x in filtered_inputs], dim=-1)
         print(inputs.shape)
         return inputs
 
