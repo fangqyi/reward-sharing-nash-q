@@ -41,7 +41,7 @@ class ZQSeparateMAC():
         self.z_q_actors_selector = EpsilonGreedyActionSelector(self.args, "z_train")
 
     def forward_agent(self, data, idx, is_train):  # should only be used in training
-        z_q_vals = self._forward_z_q(data, idx, data["cur_z_p"], is_train)
+        z_q_vals = self._forward_z_q(data, idx, data["cur_z_p"] if is_train else None, is_train)
         if idx < self.args.n_agents - 1:
             z_p_vals = self._forward_z_p(data, idx)
         else:

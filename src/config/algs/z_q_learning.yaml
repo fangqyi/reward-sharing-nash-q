@@ -21,7 +21,7 @@ z_train_epsilon_anneal_time: 7500
 buffer_size: 10000
 z_buffer_size: 100
 z_test_interval: 10000
-z_batch_size: 32
+z_batch_size: 2 # 32
 
 meta_type: "distance_latent"
 latent_relation_space_dim: 1
