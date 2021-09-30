@@ -138,9 +138,14 @@ class ZQSeparateMAC():
         for x in inputs:
             x = x.reshape(bs, self.n_agents, -1)
             filtered_inputs.append(x[:, th.arange(self.n_agents) != idx])
+        print("filtered")
+        print(filtered_inputs)
         if is_train:
             z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
         inputs.append(z_p)
+        print("z_p")
+        print(z_p)
+        print(z_p.shape)
         inputs = th.cat([x.reshape(bs, -1) for x in inputs], dim=-1)
         print(inputs.shape)
         return inputs
