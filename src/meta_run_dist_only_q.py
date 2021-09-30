@@ -405,8 +405,8 @@ def sample_dist_norm(args, train=False, autograd=False):
                  d.sample(size).view(1, args.n_agents, dim_num)) for _ in range(args.pretrained_task_num)]
 
     # sample for training
-    z = (d.sample(size).view(args.n_agents, dim_num).int().to(args.device),
-         d.sample(size).view(args.n_agents, dim_num).int().to(args.device))
+    z = (d.sample(size).view(args.n_agents, dim_num).int().float().to(args.device),
+         d.sample(size).view(args.n_agents, dim_num).int().float().to(args.device))
     z[0].requires_grad = autograd
     z[1].requires_grad = autograd
     return z
