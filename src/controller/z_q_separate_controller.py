@@ -37,7 +37,7 @@ class ZQSeparateMAC():
                                     hidden_sizes=args.latent_encoder_hidden_sizes,
                                     head_num=len(self.z_options))
                            for _ in range(self.args.n_agents)]
-        print("input size: {}".format(input_size + args.latent_relation_space_dim))
+        # print("input size: {}".format(input_size + args.latent_relation_space_dim))
         self.z_p_actors_selector = EpsilonGreedyActionSelector(self.args, "z_train")
         self.z_q_actors_selector = EpsilonGreedyActionSelector(self.args, "z_train")
 
@@ -81,21 +81,10 @@ class ZQSeparateMAC():
         else:  # fixed the value for last agent
             chosen_z_p_idx = th.zeros([self.args.latent_relation_space_dim])
             z_p = th.zeros([self.args.latent_relation_space_dim]).float().to(self.args.device)
-
-        print("chosen_z_p_idx")
-        print(chosen_z_p_idx)
-        print("z_p")
-        print(z_p)
-
         # z_q
         z_q_outs = self._forward_z_q(data, idx, z_p, is_train=False).view(1, self.args.latent_relation_space_dim, -1)
         chosen_z_q_idx = self.z_q_actors_selector.select_action(z_q_outs, t_env=t_env, test_mode=test_mode).view(-1)
         z_q = th.tensor([self.z_options[chosen_z_q_idx[idx]] for idx in range(len(chosen_z_q_idx))]).float()
-
-        print("chosen_z_q_idx")
-        print(chosen_z_q_idx)
-        print("z_q")
-        print(z_q)
         return z_p, z_q, chosen_z_p_idx, chosen_z_q_idx
 
     def parameters(self):
@@ -147,16 +136,10 @@ class ZQSeparateMAC():
         for x in inputs:
             x = x.reshape(bs, self.n_agents, -1)
             filtered_inputs.append(x[:, th.arange(self.n_agents) != idx])
-        print("filtered")
-        print(filtered_inputs)
         if is_train:
             z_p = z_p.view(bs, self.n_agents, -1)[:, idx]
         filtered_inputs.append(z_p)
-        print("z_p")
-        print(z_p)
-        print(z_p.shape)
         inputs = th.cat([x.reshape(bs, -1) for x in filtered_inputs], dim=-1)
-        print(inputs.shape)
         return inputs
 
     def _forward_z_p(self, data, idx):

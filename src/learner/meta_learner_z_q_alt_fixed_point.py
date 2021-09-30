@@ -45,12 +45,6 @@ class MetaLearner:
             z_p_vals, z_q_vals = self.z_mac.forward_agent(entry, i, is_train="True")
             # TODO: Double check the gather
             chosen_z_q_vals = th.gather(z_q_vals, dim=-1, index=entry["cur_z_q_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
-            print("q_vals")
-            print(z_q_vals)
-            print("z_q_idx")
-            print(entry["cur_z_q_idx"])
-            print("chosen")
-            print(chosen_z_q_vals)
             # print("evals shape {}".format(entry["evals"].shape))
             # fake td_error
             if i == self.n_agents - 1 and self.args.latent_relation_space_dim == 1:
