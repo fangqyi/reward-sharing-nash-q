@@ -82,11 +82,20 @@ class ZQSeparateMAC():
             chosen_z_p_idx = th.zeros([self.args.latent_relation_space_dim])
             z_p = th.zeros([self.args.latent_relation_space_dim]).float()
 
+        print("chosen_z_p_idx")
+        print(chosen_z_p_idx)
+        print("z_p")
+        print(z_p)
+
         # z_q
         z_q_outs = self._forward_z_q(data, idx, z_p, is_train=False).view(1, self.args.latent_relation_space_dim, -1)
         chosen_z_q_idx = self.z_q_actors_selector.select_action(z_q_outs, t_env=t_env, test_mode=test_mode).view(-1)
         z_q = th.tensor([self.z_options[chosen_z_q_idx[idx]] for idx in range(len(chosen_z_q_idx))]).float()
 
+        print("chosen_z_q_idx")
+        print(chosen_z_q_idx)
+        print("z_q")
+        print(z_q)
         return z_p, z_q, chosen_z_p_idx, chosen_z_q_idx
 
     def parameters(self):
