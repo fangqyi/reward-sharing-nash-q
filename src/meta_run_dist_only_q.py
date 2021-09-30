@@ -5,6 +5,12 @@ Code framework adapted from https://github.com/TonghanWang/ROMA
 # decentralized, self-interested agents
 # in training, sharing scheme is represented as a gaussian distribution
 
+# play in turn
+# only q learning
+# only care about the return from current episode
+# linear
+# fix a point in sharing scheme
+
 import datetime
 import math
 import os
@@ -21,8 +27,8 @@ from torch.distributions.uniform import Uniform
 
 from components.episode_buffer import ReplayBuffer, EpisodeBatch
 from components.transforms import OneHot
-from controller.ac_z_separate_controller import ZACDiscreteSeparateMAC, ZQSeparateMAC, ZACSeparateMAC
 from controller.d_separate_controller import SeparateMAC
+from controller.z_q_separate_controller import ZQSeparateMAC
 from learner import REGISTRY as le_REGISTRY
 from runner import REGISTRY as r_REGISTRY
 from utils.logging import Logger
@@ -124,12 +130,7 @@ def run_distance_sequential(args, logger):
                           device="cpu" if args.buffer_cpu_only else args.device)
 
     # Set up controller for sharing scheme
-    if args.z_critic_actor_discrete_update:
-        z_mac = ZACDiscreteSeparateMAC(args)
-    elif args.z_q_update:
-        z_mac = ZQSeparateMAC(args)
-    elif args.z_critic_actor_update:
-        z_mac = ZACSeparateMAC(args)
+    z_mac = ZQSeparateMAC(args)
 
     train_phase = "pretrain"
     # Setup multiagent controllers
@@ -246,8 +247,6 @@ def run_distance_sequential(args, logger):
     z_p, z_q = sample_dist_norm(args, train=True)  # initial sharing scheme
     z_p_idx = th.tensor([0, 0], dtype=th.int64).to(device)
     z_q_idx = th.tensor([0, 0], dtype=th.int64).to(device)
-    # z_p, z_q = torch.tensor([0, 0], dtype=th.float).view(args.n_agents, args.latent_relation_space_dim).to(args.device),\
-    #            torch.tensor([0, 10], dtype=th.float).view(args.n_agents, args.latent_relation_space_dim).to(args.device)
 
     buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
                           preprocess=preprocess,
@@ -276,10 +275,8 @@ def run_distance_sequential(args, logger):
                     v = v.to(device)
                 actor_train_batch.update({k: v})
 
-            if args.z_q_update:
-                z_p[i], z_q[i], z_p_idx[i], z_q_idx[i] = z_mac.select_z_agent(actor_train_batch, z_train_steps, i, test_mode=False)
-            else:
-                z_p[i], z_q[i], _, _ = z_mac.select_z_agent(actor_train_batch, z_train_steps, i, test_mode=False)
+            z_p[i], z_q[i], z_p_idx[i], z_q_idx[i] = z_mac.select_z_agent(actor_train_batch, z_train_steps, i,
+                                                                          test_mode=False)
 
             while runner.t_env <= env_steps_threshold:
                 episode_batch = runner.run(z_q, z_p, test_mode=False, train_phase=train_phase)
@@ -293,7 +290,7 @@ def run_distance_sequential(args, logger):
                     if episode_sample.device != args.device:
                         episode_sample.to(args.device)
 
-                learner.train(episode_sample, runner.t_env, episode)
+                    learner.train(episode_sample, runner.t_env, episode)
 
             # sample for optimizing z critic
             episode_returns = []
@@ -303,13 +300,9 @@ def run_distance_sequential(args, logger):
             episode_returns = torch.sum(th.tensor(episode_returns, dtype=th.float), dim=0) / args.z_sample_runs
 
             # generate data for training z critic
-            if args.z_q_update:
-                post_transition_train_data = {"cur_z_p": z_p.view(-1), "cur_z_q": z_q.view(-1),
-                                              "cur_z_p_idx": z_p_idx, "cur_z_q_idx": z_q_idx,
-                                              "evals": episode_returns}
-            else:
-                post_transition_train_data = {"cur_z_p": z_p.view(-1), "cur_z_q": z_q.view(-1),
-                                              "evals": episode_returns}
+            post_transition_train_data = {"cur_z_p": z_p.view(-1), "cur_z_q": z_q.view(-1),
+                                          "cur_z_p_idx": z_p_idx, "cur_z_q_idx": z_q_idx,
+                                          "evals": episode_returns}
 
             z_batch.update(post_transition_train_data, ts=0)
             z_buffers[i].insert_episode_batch(z_batch)
@@ -321,7 +314,7 @@ def run_distance_sequential(args, logger):
 
                 # train z critic and actors
                 learner.z_train(z_sample, z_train_steps)
-                if i == args.n_agents-1:  # all agents' actor has trained at least once
+                if i == args.n_agents - 1:  # all agents' actor has trained at least once
                     z_train_steps += 1
 
             if i == args.n_agents:
@@ -370,15 +363,22 @@ def log_z(z_q, z_p, args, logger, runner, prefix):
         e = [math.exp(x) for x in vector]
         return [x / sum(e) for x in e]
 
+    def prop(vector):
+        return [x / sum(vector) for x in vector]
+
     def distance(a, b):
         ret = numpy.linalg.norm([a - b], ord=2)
         return ret
+
+    upper = args.latent_relation_space_upper_bound
+    lower = args.latent_relation_space_lower_bound
+    range = upper - lower + 1e-4
 
     z_q_cp = z_q.clone().view(args.n_agents, -1).detach().cpu().numpy()
     z_p_cp = z_p.clone().view(args.n_agents, -1).detach().cpu().numpy()
     dist = []
     for giver in range(args.n_agents):
-        dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
+        dist.append(softmax([range - distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(args.n_agents)]))
 
     for receiver in range(args.n_agents):
         for giver in range(args.n_agents):

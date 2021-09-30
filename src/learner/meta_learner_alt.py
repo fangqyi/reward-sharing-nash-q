@@ -4,7 +4,7 @@ import torch as th
 from torch.optim import Adam
 
 from components.episode_buffer import EpisodeBatch
-from module.critics.dist_critic import CenDistCritic, DistCritic
+from module.critics.dist_critic import DistCritic, MultiDistCritic
 
 
 class MetaLearner:
@@ -21,18 +21,18 @@ class MetaLearner:
         self.last_target_update_episode = 0
 
         # z critic
-        if args.centralized_social_welfare:
-            # centralized social welfare critic: all the agents optimize the estimated social utility
-            self.z_critic = CenDistCritic(scheme, args)
-            self.z_critic_params = list(self.z_critic.parameters())
-            self.z_critic_optimiser = Adam(params=self.z_critic_params, lr=args.z_critic_lr, eps=args.optim_eps)
-        elif args.z_critic_actor_update or args.z_critic_gradient_update or args.z_critic_actor_discrete_update:
+        if args.z_critic_actor_update or args.z_critic_actor_discrete_update:
             # fully decentralized critics on reward-sharing structure
-            self.z_critics = [DistCritic(scheme, args) for _ in range(self.args.n_agents)]
+            # self.z_critics = [DistCritic(scheme, args) for _ in range(self.args.n_agents)]
+            # estimates the returns for all sharing scheme responses (in order to calculate advantage)
+            self.z_critics = [MultiDistCritic(scheme, args) if args.z_critic_actor_discrete_update and self.args.use_advantage
+                              else DistCritic(scheme, args) for _ in range(self.args.n_agents)]
+
             self.z_critic_params = [list(critic.parameters()) for critic in self.z_critics]
             self.z_critic_optimisers = [Adam(params=self.z_critic_params[i], lr=args.z_critic_lr, eps=args.optim_eps)
                                         for i
                                         in range(self.n_agents)]
+            self.z_critic_train_steps = 0
 
         # optimiser for z actor if needed
         if args.z_critic_actor_update or args.z_q_update:
@@ -56,10 +56,6 @@ class MetaLearner:
         self.log_stats_t = -self.args.learner_log_interval - 1
 
     def get_welfare_estimate(self, entry):  # returns the estimated social utility
-        # centralized critic
-        if self.args.centralized_social_welfare:
-            return self.z_critic(entry)
-        # decentralized critic
         latent_vars = self.mac.sample_latent_var(entry["z_q"],
                                                  entry["z_p"]) if self.args.sharing_scheme_encoder else None
         return sum([self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)])
@@ -70,70 +66,100 @@ class MetaLearner:
             latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
         return self.z_critics[idx](entry, latent_vars, z_idx)
 
-    def z_train(self, entry, t_env, z=None):  # train z critic
+    def z_critic_train(self, entry, t_env, z=None):
+        for i in range(self.n_agents):
+            z_val = self.z_critics[i](entry,
+                                      latent_var=self._get_latent_vars(entry),
+                                      z_idx=z[i] if z is not None else None)
+            if self.args.z_critic_actor_discrete_update:
+                z_val = self._index_critic_vals(z_val, entry, i)  # z_val_taken
+            z_critic_loss = ((z_val - entry["evals"][i]) ** 2).sum()
+            self.z_critic_optimisers[i].zero_grad()
+            z_critic_loss.backward()
+            grad_norm = th.nn.utils.clip_grad_norm_(self.z_critic_params[i], self.args.grad_norm_clip)  # max_norm
+            self.z_critic_optimisers[i].step()
+            self.z_critic_train_steps += 1
+
+            if self._is_logging(t_env):
+                self.logger.log_stat("z_critic_loss_agent_{}".format(i), z_critic_loss.item(), t_env)
+                self.logger.log_stat("z_critic_grad_norm_{}".format(i), grad_norm, t_env)
+                self.logger.log_stat("z_critic_train_steps_{}".format(i), self.z_critic_train_steps, t_env)
+
+    def _index_critic_vals(self, z_val, entry, agent_idx):
+        if len(entry["z_p"].shape) >= 2:
+            bs = entry["z_p"].shape[0]
+        else:
+            bs = 1
+
+        l = int(self.args.latent_reladtion_space_lower_bound)
+        u = int(self.args.latent_relation_space_upper_bound)
+        intrvl = int(self.args.relation_space_div_interval)
+        num_options = len(list(range(l, u + 1, intrvl)))
+
+        z_p = entry["cur_z_p"][:, agent_idx]
+        z_q = entry["cur_z_q"][:, agent_idx]
+        # slice z_p
+        for idx in range(self.args.latent_relation_space_dim):  # tested magic
+            z_val = th.index_select(z_val.view(bs, num_options, -1), dim=1, index=z_p[:, idx].view(-1))[:, 0]
+            z_val = th.index_select(z_val.view(bs, num_options, -1), dim=1, index=z_q[:, idx].view(-1))[:, 0]
+        return z_val
+
+    def z_train_agent(self, entry, t_env, idx):
         bs = entry["z_q"].shape[0]
-        is_logging = False
-        if t_env - self.log_stats_t >= self.args.learner_log_interval:
-            is_logging = True
-            self.log_stats_t = t_env
-
-        # update critics
-        if self.args.z_critic_actor_update or self.args.z_critic_gradient_update or self.args.z_critic_actor_discrete_update:
-            for i in range(self.n_agents):
-                z_val = self.z_critics[i](entry, latent_var=self._get_latent_vars(entry), z_idx=z[i] if z is not None else None)
-                z_critic_loss = ((z_val - entry["evals"][i]) ** 2).sum()
-                self.z_critic_optimisers[i].zero_grad()
-                z_critic_loss.backward()
-                grad_norm = th.nn.utils.clip_grad_norm_(self.z_critic_params[i], self.args.grad_norm_clip)  # max_norm
-                self.z_critic_optimisers[i].step()
-
-                if is_logging:
-                    self.logger.log_stat("z_critic_loss_agent_{}".format(i), z_critic_loss.item(), t_env)
-                    self.logger.log_stat("z_critic_grad_norm_{}".format(i), grad_norm, t_env)
 
         # update actors in critic actor approach
-        if self.args.z_critic_actor_update or self.args.z_critic_actor_discrete_update:
-            for i in range(self.n_agents):
-                z_p_i, prob_z_p_i, z_q_i, prob_z_q_i = self.z_mac.forward_agent(entry, i)
-                data = {"z_p": z_p_i, "z_q": z_q_i}
-                critic_data = {}
-                for k, v in data.items():
-                    if not isinstance(v, th.Tensor):
-                        v = th.tensor(v, dtype=th.float, device=self.args.device)
-                    else:
-                        v.to(self.args.device)
-                    critic_data.update({k: v})
-                z_val = self.z_critics[i](entry, latent_var=self._get_latent_vars(entry))
-                pg_loss = - (z_val * (prob_z_q_i + prob_z_p_i)).sum()
+        if self.args.z_critic_actor_discrete_update and self.args.use_advantage:
+            _, _, log_prob_z_p_i, log_prob_z_q_i, prob_z_p_i, prob_z_q_i = self.z_mac.forward_agent(entry, idx)
+            z_val = self.z_critics[idx](entry, latent_var=self._get_latent_vars(entry))
+            z_val = self._index_critic_vals(z_val=z_val, entry=entry, agent_idx=idx)
+            baseline = (prob_z_p_i * prob_z_q_i) * z_val
+            pg_loss = - (z_val * (prob_z_q_i + prob_z_p_i)).sum()
 
-                self.z_actors_optimisers[i].zero_grad()
-                pg_loss.backward()
-                grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[i], self.args.grad_norm_clip)
-                self.z_actors_optimisers[i].step()
+            self.z_actors_optimisers[idx].zero_grad()
+            pg_loss.backward()
+            grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[idx], self.args.grad_norm_clip)
+            self.z_actors_optimisers[idx].step()
 
-                if is_logging:
-                    self.logger.log_stat("z_actors_policy_gradient_agent_{}".format(i), pg_loss.item(), t_env)
-                    self.logger.log_stat("z_actors_grad_norm_{}".format(i), grad_norm, t_env)
+            if self._is_logging(t_env):
+                self.logger.log_stat("z_actors_policy_gradient_agent_{}".format(idx), pg_loss.item(), t_env)
+                self.logger.log_stat("z_actors_grad_norm_{}".format(idx), grad_norm, t_env)
+                self._logged(t_env)
+
+        elif self.args.z_critic_actor_update or (self.args.z_critic_actor_discrete_update and not self.args.use_advantage):
+            _, _, log_prob_z_p_i, log_prob_z_q_i, prob_z_p_i, prob_z_q_i = self.z_mac.forward_agent(entry, idx)
+            z_val = self.z_critics[idx](entry, latent_var=self._get_latent_vars(entry))
+            pg_loss = - (z_val * (prob_z_q_i + prob_z_p_i)).sum()
+
+            self.z_actors_optimisers[idx].zero_grad()
+            pg_loss.backward()
+            grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[idx], self.args.grad_norm_clip)
+            self.z_actors_optimisers[idx].step()
+
+            if self._is_logging(t_env):
+                self.logger.log_stat("z_actors_policy_gradient_agent_{}".format(idx), pg_loss.item(), t_env)
+                self.logger.log_stat("z_actors_grad_norm_{}".format(idx), grad_norm, t_env)
+                self._logged(t_env)
 
         elif self.args.z_q_update:  # update policy actor in q learning
-            for i in range(self.n_agents):
-                z_p_vals, z_q_vals = self.z_mac.forward_agent(entry, i)
-                # TODO: Double check the gather
-                chosen_z_p_vals = th.gather(z_p_vals, dim=-1,
-                                            index=entry["cur_z_p_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
-                chosen_z_q_vals = th.gather(z_q_vals, dim=-1,
-                                            index=entry["cur_z_q_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
-                # print("evals shape {}".format(entry["evals"].shape))
-                # fake td_error
-                loss = (chosen_z_p_vals + chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:,i].detach()).sum()
-                self.z_actors_optimisers[i].zero_grad()
-                loss.backward()
-                grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[i], self.args.grad_norm_clip)
-                self.z_actors_optimisers[i].step()
-                is_logging = True  # debugging
-                if is_logging:
-                    self.logger.log_stat("z_actors_loss_agent_{}".format(i), loss.item(), t_env)
-                    self.logger.log_stat("z_actors_grad_norm_{}".format(i), grad_norm, t_env)
+            z_p_vals, z_q_vals = self.z_mac.forward_agent(entry, idx)
+            # TODO: Double check the gather
+            chosen_z_p_vals = th.gather(z_p_vals, dim=-1,
+                                        index=entry["cur_z_p_idx"].view(bs, self.n_agents, -1)[:, idx]).squeeze(-1)
+            chosen_z_q_vals = th.gather(z_q_vals, dim=-1,
+                                        index=entry["cur_z_q_idx"].view(bs, self.n_agents, -1)[:, idx]).squeeze(-1)
+            # print("evals shape {}".format(entry["evals"].shape))
+            # fake td_error
+            loss = ((chosen_z_p_vals + chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:,
+                                                         idx].detach()) ** 2).sum()
+            self.z_actors_optimisers[idx].zero_grad()
+            loss.backward()
+            grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[idx], self.args.grad_norm_clip)
+            self.z_actors_optimisers[idx].step()
+
+            if self._is_logging(t_env):
+                self.logger.log_stat("z_actors_loss_agent_{}".format(idx), loss.item(), t_env)
+                self.logger.log_stat("z_actors_grad_norm_{}".format(idx), grad_norm, t_env)
+                self._logged(t_env)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):  # train agent models
         # train agents
@@ -334,6 +360,12 @@ class MetaLearner:
     def _update_targets(self):
         self.target_mac.load_state(self.mac)
         self.logger.console_logger.info("Updated target network")
+
+    def _is_logging(self, t_env):
+        return t_env - self.log_stats_t >= self.args.learner_log_interval
+
+    def _logged(self, t_env):
+        self.log_stats_t = t_env
 
     def cuda(self):
         self.mac.cuda()

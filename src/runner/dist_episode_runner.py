@@ -113,14 +113,15 @@ class DistEpisodeRunner:
             # the clamped result doesn't save to replay buffer in case it messes with training (does it?)
             upper = self.args.latent_relation_space_upper_bound
             lower = self.args.latent_relation_space_lower_bound
+            range = upper - lower + 1e-4
             z_q_cp = clip(z_q_cp, lower, upper)
             z_p_cp = clip(z_p_cp, lower, upper)
 
             distributed_r = [0] * self.n_agents
             # calculate distance
             dist = []
-            for giver in range(self.n_agents):
-                dist.append(softmax([- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(self.n_agents)]))
+            for giver in range(self.n_agents):  # changed to linear
+                dist.append(prop([range - distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(self.n_agents)]))
 
             # sharing
             for receiver in range(self.n_agents):
@@ -246,6 +247,8 @@ def softmax(vector):
     e = [math.exp(x) for x in vector]
     return [x / sum(e) for x in e]
 
+def prop(vector):
+    return [x / sum(vector) for x in vector]
 
 def distance(a, b):
     ret = numpy.linalg.norm(a - b, ord=2)

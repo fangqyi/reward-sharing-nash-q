@@ -29,7 +29,7 @@ meta_type: "distance_latent"
 latent_relation_space_dim: 1
 latent_relation_space_upper_bound: 10.0
 latent_relation_space_lower_bound: 0.0
-relation_space_div_interval: 1
+relation_space_div_interval: 2.5
 latent_var_dim: 2
 latent_encoder_hidden_sizes: [64, 64]
 pretrained_task_num: 32
@@ -37,6 +37,7 @@ total_pretrain_steps: 2000000
 z_critic_lr: 0.001
 z_actor_lr: 0.001
 z_update_lr: 0.05  # only for critic gradient approach
+use_advantage: True
 
 # update the target network every {} episodes
 target_update_interval: 30
@@ -56,7 +57,6 @@ name: "dist_meta_learning_cleanup_decentralized"
 agent: "rnn_agent_image_vec"
 
 # centralized critic and altruistic agents
-centralized_social_welfare: False
 separate_agents: True
 obs_agent_id: False
 sharing_scheme_encoder: False

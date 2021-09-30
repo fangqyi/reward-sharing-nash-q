@@ -17,36 +17,17 @@ class MetaLearner:
         self.logger = logger
 
         self.params = list(mac.parameters())
-
         self.last_target_update_episode = 0
 
-        # z critic
-        if args.centralized_social_welfare:
-            # centralized social welfare critic: all the agents optimize the estimated social utility
-            self.z_critic = CenDistCritic(scheme, args)
-            self.z_critic_params = list(self.z_critic.parameters())
-            self.z_critic_optimiser = Adam(params=self.z_critic_params, lr=args.z_critic_lr, eps=args.optim_eps)
-        elif args.z_critic_actor_update or args.z_critic_gradient_update or args.z_critic_actor_discrete_update:
-            # fully decentralized critics on reward-sharing structure
-            self.z_critics = [DistCritic(scheme, args) for _ in range(self.args.n_agents)]
-            self.z_critic_params = [list(critic.parameters()) for critic in self.z_critics]
-            self.z_critic_optimisers = [Adam(params=self.z_critic_params[i], lr=args.z_critic_lr, eps=args.optim_eps)
-                                        for i
-                                        in range(self.n_agents)]
-
         # optimiser for z actor if needed
-        if args.z_critic_actor_update or args.z_q_update:
-            self.z_actors_params = self.z_mac.parameters()
-            self.z_actors_optimisers = [Adam(params=self.z_actors_params[i], lr=args.z_actor_lr, eps=args.optim_eps) for
-                                        i
-                                        in range(self.n_agents)]
+        self.z_actors_params = self.z_mac.parameters()
+        self.z_actors_optimisers = [Adam(params=self.z_actors_params[i], lr=args.z_actor_lr, eps=args.optim_eps) for
+                                    i
+                                    in range(self.n_agents)]
 
         # agent optimiser(s)
-        if args.separate_agents:
-            self.optimisers = [Adam(params=self.params[idx], lr=args.lr, eps=args.optim_eps) for idx in
-                               range(self.n_agents)]
-        else:
-            self.optimiser = Adam(params=self.params, lr=args.lr, eps=args.optim_eps)
+        self.optimisers = [Adam(params=self.params[idx], lr=args.lr, eps=args.optim_eps) for idx in
+                           range(self.n_agents)]
 
         self.target_mac = copy.deepcopy(mac)
         # not needed if agent(s) has no regards for future rounds
@@ -55,85 +36,33 @@ class MetaLearner:
 
         self.log_stats_t = -self.args.learner_log_interval - 1
 
-    def get_welfare_estimate(self, entry):  # returns the estimated social utility
-        # centralized critic
-        if self.args.centralized_social_welfare:
-            return self.z_critic(entry)
-        # decentralized critic
-        latent_vars = self.mac.sample_latent_var(entry["z_q"],
-                                                 entry["z_p"]) if self.args.sharing_scheme_encoder else None
-        return sum([self.z_critics[i](entry, i, latent_vars) for i in range(self.args.n_agents)])
-
-    def get_agent_critic_estimate(self, entry, idx, z_idx):  # returns the estimated utility of individual agent
-        latent_vars = None
-        if self.args.sharing_scheme_encoder:
-            latent_vars = self.mac.sample_latent_var(entry["z_q"], entry["z_p"])
-        return self.z_critics[idx](entry, latent_vars, z_idx)
-
-    def z_train(self, entry, t_env, z=None):  # train z critic
+    def z_train(self, entry, t_env):  # train z critic
         bs = entry["z_q"].shape[0]
         is_logging = False
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
-            is_logging = True
             self.log_stats_t = t_env
 
-        # update critics
-        if self.args.z_critic_actor_update or self.args.z_critic_gradient_update or self.args.z_critic_actor_discrete_update:
-            for i in range(self.n_agents):
-                z_val = self.z_critics[i](entry, latent_var=self._get_latent_vars(entry), z_idx=z[i] if z is not None else None)
-                z_critic_loss = ((z_val - entry["evals"][i]) ** 2).sum()
-                self.z_critic_optimisers[i].zero_grad()
-                z_critic_loss.backward()
-                grad_norm = th.nn.utils.clip_grad_norm_(self.z_critic_params[i], self.args.grad_norm_clip)  # max_norm
-                self.z_critic_optimisers[i].step()
+        for i in range(self.n_agents):
+            z_p_vals, z_q_vals = self.z_mac.forward_agent(entry, i)
+            # TODO: Double check the gather
+            chosen_z_p_vals = th.gather(z_p_vals, dim=-1,
+                                        index=entry["cur_z_p_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
+            chosen_z_q_vals = th.gather(z_q_vals, dim=-1,
+                                        index=entry["cur_z_q_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
+            # print("evals shape {}".format(entry["evals"].shape))
+            # fake td_error
+            if i == self.n_agents - 1 and self.args.latent_relation_space_dim:
+                loss = (chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:, i].detach()).sum()
+            else:
+                loss = (chosen_z_p_vals + chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:, i].detach()).sum()
+            self.z_actors_optimisers[i].zero_grad()
+            loss.backward()
+            grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[i], self.args.grad_norm_clip)
+            self.z_actors_optimisers[i].step()
 
-                if is_logging:
-                    self.logger.log_stat("z_critic_loss_agent_{}".format(i), z_critic_loss.item(), t_env)
-                    self.logger.log_stat("z_critic_grad_norm_{}".format(i), grad_norm, t_env)
-
-        # update actors in critic actor approach
-        if self.args.z_critic_actor_update or self.args.z_critic_actor_discrete_update:
-            for i in range(self.n_agents):
-                z_p_i, prob_z_p_i, z_q_i, prob_z_q_i = self.z_mac.forward_agent(entry, i)
-                data = {"z_p": z_p_i, "z_q": z_q_i}
-                critic_data = {}
-                for k, v in data.items():
-                    if not isinstance(v, th.Tensor):
-                        v = th.tensor(v, dtype=th.float, device=self.args.device)
-                    else:
-                        v.to(self.args.device)
-                    critic_data.update({k: v})
-                z_val = self.z_critics[i](entry, latent_var=self._get_latent_vars(entry))
-                pg_loss = - (z_val * (prob_z_q_i + prob_z_p_i)).sum()
-
-                self.z_actors_optimisers[i].zero_grad()
-                pg_loss.backward()
-                grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[i], self.args.grad_norm_clip)
-                self.z_actors_optimisers[i].step()
-
-                if is_logging:
-                    self.logger.log_stat("z_actors_policy_gradient_agent_{}".format(i), pg_loss.item(), t_env)
-                    self.logger.log_stat("z_actors_grad_norm_{}".format(i), grad_norm, t_env)
-
-        elif self.args.z_q_update:  # update policy actor in q learning
-            for i in range(self.n_agents):
-                z_p_vals, z_q_vals = self.z_mac.forward_agent(entry, i)
-                # TODO: Double check the gather
-                chosen_z_p_vals = th.gather(z_p_vals, dim=-1,
-                                            index=entry["cur_z_p_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
-                chosen_z_q_vals = th.gather(z_q_vals, dim=-1,
-                                            index=entry["cur_z_q_idx"].view(bs, self.n_agents, -1)[:, i]).squeeze(-1)
-                # print("evals shape {}".format(entry["evals"].shape))
-                # fake td_error
-                loss = (chosen_z_p_vals + chosen_z_q_vals - entry["evals"].view(bs, self.n_agents)[:,i].detach()).sum()
-                self.z_actors_optimisers[i].zero_grad()
-                loss.backward()
-                grad_norm = th.nn.utils.clip_grad_norm_(self.z_actors_params[i], self.args.grad_norm_clip)
-                self.z_actors_optimisers[i].step()
-                is_logging = True  # debugging
-                if is_logging:
-                    self.logger.log_stat("z_actors_loss_agent_{}".format(i), loss.item(), t_env)
-                    self.logger.log_stat("z_actors_grad_norm_{}".format(i), grad_norm, t_env)
+            if is_logging:
+                self.logger.log_stat("z_actors_loss_agent_{}".format(i), loss.item(), t_env)
+                self.logger.log_stat("z_actors_grad_norm_{}".format(i), grad_norm, t_env)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):  # train agent models
         # train agents
@@ -338,57 +267,29 @@ class MetaLearner:
     def cuda(self):
         self.mac.cuda()
         self.target_mac.cuda()
-        if self.args.centralized_social_welfare:
-            self.z_critic.cuda()
-        elif self.args.z_critic_actor_update or self.args.z_critic_gradient_update:
-            for z_critic in self.z_critics:
-                z_critic.cuda()
-        if self.args.z_critic_actor_update or self.args.z_q_update:
-            self.z_mac.cuda()
+        self.z_mac.cuda()
 
     def save_models(self, path, train=False):
         self.mac.save_models(path)
-        if self.args.separate_agents:
-            for idx in range(self.n_agents):
-                th.save(self.optimisers[idx].state_dict(), "{}/opt{}.th".format(path, idx))
-        else:
-            th.save(self.optimiser.state_dict(), "{}/opt.th".format(path))
+        for idx in range(self.n_agents):
+            th.save(self.optimisers[idx].state_dict(), "{}/opt{}.th".format(path, idx))
 
-        if train:  # also save z critic(s) and respective optimisers
-            if self.args.centralized_social_welfare:
-                th.save(self.z_critic.state_dict(), "{}/z_critic.th".format(path))
-                th.save(self.z_critic_optimiser.state_dict(), "{}/z_critic_opt.th".format(path))
-            elif self.args.z_critic_gradient_update or self.args.z_critic_actor_update:
-                for idx in range(self.n_agents):
-                    th.save(self.z_critics[idx].state_dict(), "{}/z_critics{}.th".format(path, idx))
-                    th.save(self.z_critic_optimisers[idx].state_dict(), "{}/z_critic_opt{}.th".format(path, idx))
-
-            if self.args.z_q_update or self.args.z_critic_actor_update:
-                self.z_mac.save_models(path)
+        if train:
+            self.z_mac.save_models(path)
 
     def load_models(self, path, train=False):
         self.mac.load_models(path)
         # Not quite right but I don't want to save target networks
         self.target_mac.load_models(path)
-        if self.args.separate_agents:
-            for idx in range(self.n_agents):
-                self.optimisers[idx].load_state_dict(
-                    th.load("{}/opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
-        else:
-            self.optimiser.load_state_dict(th.load("{}/opt.th".format(path), map_location=lambda storage, loc: storage))
+        for idx in range(self.n_agents):
+            self.optimisers[idx].load_state_dict(
+                th.load("{}/opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
 
         if train:  # also load z critic(s) and respective optimisers
-            if self.args.centralized_social_welfare:
+            for idx in range(self.n_agents):
                 self.z_critic.load_state_dict(
-                    th.load("{}/z_critic.th".format(path), map_location=lambda storage, loc: storage))
+                    th.load("{}/z_critic{}.th".format(path, idx), map_location=lambda storage, loc: storage))
                 self.z_critic_optimiser.load_state_dict(
-                    th.load("{}/z_critic_opt.th".format(path), map_location=lambda storage, loc: storage))
-            elif self.args.z_critic_gradient_update or self.args.z_critic_actor_update:
-                for idx in range(self.n_agents):
-                    self.z_critic.load_state_dict(
-                        th.load("{}/z_critic{}.th".format(path, idx), map_location=lambda storage, loc: storage))
-                    self.z_critic_optimiser.load_state_dict(
-                        th.load("{}/z_critic_opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+                    th.load("{}/z_critic_opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
 
-            if self.args.z_q_update or self.args.z_critic_actor_update:
-                self.z_mac.load_models(path)
+        self.z_mac.load_models(path)

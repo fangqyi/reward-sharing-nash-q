@@ -8,7 +8,7 @@ z_sample_runs: 10
 
 pretrain_epsilon_start: 1.0
 pretrain_epsilon_finish: 0.05
-pretrain_epsilon_anneal_time: 1500000
+pretrain_epsilon_anneal_time: 2000000
 
 train_epsilon_start: 1.0
 train_epsilon_finish: 0.05
@@ -23,23 +23,20 @@ z_buffer_size: 100
 z_test_interval: 10000
 z_batch_size: 32
 
-#
-meta_t_max:
 meta_type: "distance_latent"
 latent_relation_space_dim: 1
-latent_relation_space_upper_bound: 10.0
+latent_relation_space_upper_bound: 5.0
 latent_relation_space_lower_bound: 0.0
 relation_space_div_interval: 1
 latent_var_dim: 2
 latent_encoder_hidden_sizes: [64, 64]
 pretrained_task_num: 32
-total_pretrain_steps: 2000000
+total_pretrain_steps: 3000000
 z_critic_lr: 0.001
 z_actor_lr: 0.001
-z_update_lr: 0.05  # only for critic gradient approach
 
 # update the target network every {} episodes
-target_update_interval: 30
+target_update_interval: 50
 
 # use the Q_Learner to train
 agent_output_type: "q"
@@ -56,7 +53,6 @@ name: "dist_meta_learning_cleanup_decentralized"
 agent: "rnn_agent_image_vec"
 
 # centralized critic and altruistic agents
-centralized_social_welfare: False
 separate_agents: True
 obs_agent_id: False
 sharing_scheme_encoder: False
@@ -70,15 +66,19 @@ z_critic_actor_discrete_update: False
 z_q_update: True
 
 # loading model from environment
-load_pretrained_model: True
+load_pretrained_model: False
 pretrained_model_load_path: "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_decentralized__2021-08-24_14-19-30/2407650"
 
 # debug: test if deterministic sharing schemes improve performance
-deterministic_pretrained_tasks: True
+deterministic_pretrained_tasks: False
 div_num: 2
 
 # debug: hardcoded pretraining sharing schemes
 hardcoded_pretrained_tasks: False
-hardcoded_tasks_zp: [[0,10], [0,0]]
-hardcoded_tasks_zq: [[0,10], [0,0]]
-num_hc_pret_tasks: 2
+hardcoded_tasks_zp: [[5.0, 0.0], [4.0, 4.0], [4.0, 3.0], [5.0, 0.0], [2.0, 5.0], [2.0, 1.0], [3.0, 5.0], [2.0, 4.0], [4.0, 0.0], [5.0, 1.0], [3.0, 4.0], [4.0, 5.0], [4.0, 1.0], [3.0, 5.0], [5.0, 0.0], [3.0, 1.0], [1.0, 5.0], [3.0, 1.0], [4.0, 5.0], [0.0, 5.0], [1.0, 2.0], [2.0, 5.0], [4.0, 2.0], [3.0, 5.0], [3.0, 0.0], [2.0, 0.0], [4.0, 0.0], [5.0, 3.0], [1.0, 5.0], [0.0, 1.0], [1.0, 0.0], [5.0, 2.0], [0.0, 2.0], [5.0, 0.0], [1.0, 5.0], [5.0, 1.0], [1.0, 5.0], [5.0, 2.0], [4.0, 0.0], [3.0, 0.0], [0.0, 3.0], [0.0, 5.0], [0.0, 4.0], [4.0, 5.0], [0.0, 5.0], [5.0, 0.0], [0.0, 5.0], [3.0, 1.0], [4.0, 1.0], [0.0, 2.0]]
+hardcoded_tasks_zq: [[0.0, 0.0], [0.0, 3.0], [0.0, 3.0], [0.0, 5.0], [0.0, 1.0], [0.0, 5.0], [0.0, 5.0], [0.0, 5.0], [0.0, 1.0], [0.0, 5.0], [0.0, 3.0], [0.0, 2.0], [0.0, 5.0], [0.0, 2.0], [0.0, 1.0], [0.0, 0.0], [0.0, 4.0], [0.0, 5.0], [0.0, 0.0], [0.0, 4.0], [0.0, 4.0], [0.0, 5.0], [0.0, 4.0], [0.0, 4.0], [0.0, 1.0], [0.0, 1.0], [0.0, 2.0], [0.0, 0.0], [0.0, 0.0], [0.0, 5.0], [0.0, 5.0], [0.0, 4.0], [0.0, 1.0], [0.0, 3.0], [0.0, 1.0], [0.0, 3.0], [0.0, 3.0], [0.0, 5.0], [0.0, 5.0], [0.0, 5.0], [0.0, 4.0], [0.0, 5.0], [0.0, 5.0], [0.0, 5.0], [0.0, 3.0], [0.0, 2.0], [0.0, 2.0], [0.0, 2.0], [0.0, 2.0], [0.0, 5.0]]
+
+# : 2
+
+# sharing structure
+sharing_structure: "linear"  # "linear", "softmax"

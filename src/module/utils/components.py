@@ -46,6 +46,7 @@ class MLPMultiGaussianEncoder(nn.Module):
         self.z_means = None
         self.z_vars = None
         self.z = None
+        self.log_prob_z = None
         self.prob_z = None
 
     def infer_posterior(self, inputs):
@@ -57,7 +58,8 @@ class MLPMultiGaussianEncoder(nn.Module):
             posteriors = D.Normal(self.z_means, torch.sqrt(self.z_vars))
             self.z = posteriors.rsample()
             # print("sample got {} with mean {} and vars {}".format(self.z.item(), self.z_means.item(),  self.z_vars.item()))
-            self.prob_z = posteriors.log_prob(self.z)
+            self.log_prob_z = posteriors.log_prob(self.z)
+            self.prob_z = torch.exp(self.log_prob_z)
             # print("probability got {}".format(self.prob_z.item()))
         else:
             self.z = self.z_means
@@ -220,8 +222,8 @@ class MultiSoftmaxMLP(SoftmaxMLP):
                                               layer_norm_params)
         self.head_num = head_num
 
-    def forward(self, input, return_preactivation=False):
-        output = super().forward(input, return_preactivation)
+    def forward(self, inputs, return_preactivation=False):
+        output = super().forward(inputs, return_preactivation)
         if return_preactivation:
             output[0] = F.softmax(output[0], dim=-1)
         else:
@@ -234,11 +236,13 @@ class MultiSoftmaxMLP(SoftmaxMLP):
         if get_max:
             x = probs.argmax(dim=-1)
             prob_x = probs.max(dim=-1)
+            log_prob_x = torch.log(prob_x)
         else:
             dist = D.Categorical(probs=probs)
             x = dist.sample()
-            prob_x = dist.log_prob(x)
-        return x, prob_x
+            log_prob_x = dist.log_prob(x)
+            prob_x = torch.exp(log_prob_x)
+        return x, log_prob_x, prob_x
 
 class MultiMLP(SoftmaxMLP):
     def __init__(self,
