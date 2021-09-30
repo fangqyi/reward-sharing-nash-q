@@ -255,6 +255,7 @@ def run_distance_sequential(args, logger):
     new_z_batch = partial(EpisodeBatch, z_scheme, groups, 1, z_max_seq_length, device=device)
 
     train_phase = "train"
+    mac.train_phase = train_phase
     while z_train_steps <= args.total_z_training_steps:
 
         for i in range(args.n_agents):

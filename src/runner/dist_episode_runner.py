@@ -185,6 +185,12 @@ class DistEpisodeRunner:
 
         cur_returns.append(r_acc)
         cur_dis_returns.append(distributed_r_acc)
+        print("train_phase before log")
+        print(train_phase)
+        print("z_q in runner")
+        print(z_q_cp)
+        print("z_p in runner")
+        print(z_p_cp)
         if test_mode and (len(self.test_returns) == self.args.test_nepisode):
             self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase, z_q_cp, z_p_cp)
         elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:
@@ -203,6 +209,7 @@ class DistEpisodeRunner:
     def _log(self, returns, dis_returns, stats, prefix, train_phase, z_q, z_p):
         # self.logger.console_logger.info("Agent rewards:")
         if train_phase == "pretrain" and prefix == "test_":
+            print("what")
             struct_prefix = get_flat_str(z_q, "z_q:_") + "|" + get_flat_str(z_p, "z_p:_") + "|"
         else:
             struct_prefix = ""
