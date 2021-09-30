@@ -81,7 +81,7 @@ class ZQSeparateMAC():
             z_p = th.tensor([self.z_options[chosen_z_p_idx[idx]] for idx in range(len(chosen_z_p_idx))]).float().to(self.args.device)
         else:  # fixed the value for last agent
             chosen_z_p_idx = th.zeros([self.args.latent_relation_space_dim])
-            z_p = th.zeros([self.args.latent_relation_space_lower_bound])
+            z_p = th.zeros([self.args.latent_relation_space_dim])
 
         # z_q
         chosen_z_q_idx = self.z_q_actors_selector.select_action(z_q_outs, t_env=t_env, test_mode=test_mode).view(-1)
