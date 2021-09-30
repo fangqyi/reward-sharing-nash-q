@@ -29,7 +29,7 @@ from components.episode_buffer import ReplayBuffer, EpisodeBatch
 from components.transforms import OneHot
 from controller.d_separate_controller import SeparateMAC
 from controller.z_q_separate_controller import ZQSeparateMAC
-from learner import REGISTRY as le_REGISTRY
+from learner.meta_learner_z_q_alt_fixed_point import MetaLearner
 from runner import REGISTRY as r_REGISTRY
 from utils.logging import Logger
 
@@ -140,7 +140,7 @@ def run_distance_sequential(args, logger):
     runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, mac=mac)
 
     # Learner
-    learner = le_REGISTRY[args.learner](mac, buffer.scheme, logger, args, z_mac=z_mac)
+    learner = MetaLearner(mac, buffer.scheme, logger, args, z_mac=z_mac)
 
     if args.use_cuda:
         learner.cuda()

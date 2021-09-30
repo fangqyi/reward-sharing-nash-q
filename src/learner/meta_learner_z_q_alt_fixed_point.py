@@ -4,7 +4,6 @@ import torch as th
 from torch.optim import Adam
 
 from components.episode_buffer import EpisodeBatch
-from module.critics.dist_critic import CenDistCritic, DistCritic
 
 
 class MetaLearner:
