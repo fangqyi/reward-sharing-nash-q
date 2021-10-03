@@ -277,7 +277,7 @@ def run_distance_sequential(args, logger):
     last_log_T = 0
     last_test_T = -args.test_interval - 1
     z_train_steps = 0
-    env_steps_threshold = 0
+    env_steps_threshold = runner.t_env
 
     # initialize sharing scheme actor and its optimizer
     z_p, z_q = sample_dist_norm(args, train=True)  # initial sharing scheme
