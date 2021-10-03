@@ -352,7 +352,7 @@ def run_distance_sequential(args, logger):
                 if i == args.n_agents - 1:  # all agents' actor has trained at least once
                     z_train_steps += 1
 
-            if i == args.n_agents:
+            if i == args.n_agents-1:
                 # Execute test runs once in a while
                 # print("{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
                 n_test_runs = max(1, args.test_nepisode // runner.batch_size)
@@ -363,7 +363,7 @@ def run_distance_sequential(args, logger):
                         test_z_p, test_z_q, _, _ = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=True)
                         runner.run(test_z_q, test_z_p, test_mode=True, train_phase=train_phase)
                         if not logged:
-                            log_z(test_z_q, test_z_p, args, logger, runner, prefix="test")
+                            log_z(test_z_q, test_z_p, args, logger, runner, prefix="z_test")
                             logged = True
                 # print("{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
 

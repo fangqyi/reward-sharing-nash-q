@@ -185,7 +185,7 @@ class DistEpisodeRunner:
 
         cur_returns.append(r_acc)
         cur_dis_returns.append(distributed_r_acc)
-        if test_mode and (len(self.test_returns) == self.args.test_nepisode):
+        if test_mode and sample_return_mode and (len(self.test_returns) == self.args.test_nepisode):  # dont log when test_phase in
             self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase, z_q_cp, z_p_cp)
         elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:
             self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase, z_q_cp, z_p_cp)

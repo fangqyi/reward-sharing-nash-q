@@ -108,10 +108,14 @@ class ZQSeparateMAC():
 
     def load_models(self, path):
         for idx in range(self.n_agents):
-            self.z_p_actors[idx].load_state_dict(
-                th.load("{}/z_p_actor{}.th".format(path, idx), map_location=lambda storage, loc: storage))
-            self.z_q_actors[idx].load_state_dict(
-                th.load("{}/z_q_actor{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+            if idx == self.n_agents-1 and self.args.latent_relation_space_dim == 1:
+                self.z_q_actors[idx].load_state_dict(
+                    th.load("{}/z_q_actor{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+            else:
+                self.z_p_actors[idx].load_state_dict(
+                    th.load("{}/z_p_actor{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+                self.z_q_actors[idx].load_state_dict(
+                    th.load("{}/z_q_actor{}.th".format(path, idx), map_location=lambda storage, loc: storage))
 
     def _build_z_p_input(self, data, idx):
         inputs = [data["z_p"], data["z_q"]]
