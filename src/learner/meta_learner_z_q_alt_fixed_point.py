@@ -274,6 +274,8 @@ class MetaLearner:
 
         if train:
             self.z_mac.save_models(path)
+            for idx in range(self.n_agents):
+                th.save(self.z_actors_optimisers[idx].state_dict(), "{}/z_opt{}.th".format(path, idx))
 
     def load_models(self, path, train=False):
         self.mac.load_models(path)
@@ -282,4 +284,13 @@ class MetaLearner:
         for idx in range(self.n_agents):
             self.optimisers[idx].load_state_dict(
                 th.load("{}/opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+
+        if train:
+            self.z_mac.load_models(path)
+            if self.args.load_z_opt:
+                for idx in range(self.n_agents):
+                    self.z_actors_optimisers[idx].load_state_dict(
+                        th.load("{}/z_opt{}.th".format(path, idx), map_location=lambda storage, loc: storage))
+
+
 

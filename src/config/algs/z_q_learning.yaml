@@ -82,3 +82,9 @@ hardcoded_tasks_zq: [[0.0, 0.0], [0.0, 3.0], [0.0, 3.0], [0.0, 5.0], [0.0, 1.0],
 
 # sharing structure
 sharing_structure: "linear"  # "linear", "softmax"
+
+
+# checkpoint
+checkpoint_path:
+load_step:
+load_z_opt: False

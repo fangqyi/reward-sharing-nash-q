@@ -215,6 +215,43 @@ def run_distance_sequential(args, logger):
 
     ############################### optimizing sharing structure #########################
 
+    runner.t_env = 0
+    train_phase = "train"
+    mac.train_phase = train_phase
+
+    # loading from checkpoint
+    if args.checkpoint_path != "":
+
+        timesteps = []
+
+        if not os.path.isdir(args.checkpoint_path):
+            logger.console_logger.info("Checkpoint directiory {} doesn't exist".format(args.checkpoint_path))
+            return
+
+        # Go through all files in args.checkpoint_path
+        for name in os.listdir(args.checkpoint_path):
+            full_name = os.path.join(args.checkpoint_path, name)
+            # Check if they are dirs the names of which are numbers
+            if os.path.isdir(full_name) and name.isdigit():
+                timesteps.append(int(name))
+
+        if args.load_step == 0:
+            # choose the max timestep
+            timestep_to_load = max(timesteps)
+        else:
+            # choose the timestep closest to load_step
+            timestep_to_load = min(timesteps, key=lambda x: abs(x - args.load_step))
+
+        model_path = os.path.join(args.checkpoint_path, str(timestep_to_load))
+
+        logger.console_logger.info("Loading model from {}".format(model_path))
+        learner.load_models(model_path)
+        runner.t_env = timestep_to_load
+
+        if args.evaluate or args.save_replay:
+            evaluate_sequential(args, runner)
+            return
+
     logger.console_logger.info(
         "Beginning training for {} timesteps".format(args.total_z_training_steps * args.env_steps_every_z))
 
@@ -237,7 +274,6 @@ def run_distance_sequential(args, logger):
 
     # reinitialize training parameters
     episode = 0
-    runner.t_env = 0
     last_log_T = 0
     last_test_T = -args.test_interval - 1
     z_train_steps = 0
@@ -254,8 +290,6 @@ def run_distance_sequential(args, logger):
 
     new_z_batch = partial(EpisodeBatch, z_scheme, groups, 1, z_max_seq_length, device=device)
 
-    train_phase = "train"
-    mac.train_phase = train_phase
     while z_train_steps <= args.total_z_training_steps:
 
         for i in range(args.n_agents):
@@ -326,7 +360,7 @@ def run_distance_sequential(args, logger):
                     last_test_T = runner.t_env
                     logged = False
                     for _ in range(n_test_runs):
-                        test_z_p, test_z_q, _, _ = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=False)
+                        test_z_p, test_z_q, _, _ = z_mac.select_z(actor_train_batch, z_train_steps, test_mode=True)
                         runner.run(test_z_q, test_z_p, test_mode=True, train_phase=train_phase)
                         if not logged:
                             log_z(test_z_q, test_z_p, args, logger, runner, prefix="test")
