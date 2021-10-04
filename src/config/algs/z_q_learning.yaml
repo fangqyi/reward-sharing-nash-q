@@ -85,6 +85,6 @@ sharing_structure: "linear"  # "linear", "softmax"
 
 
 # checkpoint
-checkpoint_path: "/home/paperspace/reward-sharing-nash-q/results/models/dist_meta_learning_cleanup_decentralized__2021-09-30_02-36-50"
+checkpoint_path: "" # "/home/paperspace/reward-sharing-nash-q/results/models/dist_meta_learning_cleanup_decentralized__2021-09-30_02-36-50"
 load_step: 0
 load_z_opt: False

@@ -61,6 +61,8 @@ class DistEpisodeRunner:
     def run(self, z_q, z_p, z_idx=None, test_mode=False, sample_return_mode=False, train_phase="pretrain"):  # run one eps
         self.reset()
 
+        z_test_mode = test_mode and (not sample_return_mode)
+
         if z_idx is None:
             z_idx = [[-1]]
 
@@ -167,10 +169,10 @@ class DistEpisodeRunner:
         actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
         self.batch.update({"actions": actions, }, ts=self.t)
 
-        cur_stats = self.test_stats if test_mode else self.train_stats
-        cur_returns = self.test_returns if test_mode else self.train_returns
-        cur_dis_returns = self.test_dis_returns if test_mode else self.train_dis_returns
-        log_prefix = "test_" if test_mode else ""
+        cur_stats = self.test_stats if z_test_mode else self.train_stats
+        cur_returns = self.test_returns if z_test_mode else self.train_returns
+        cur_dis_returns = self.test_dis_returns if z_test_mode else self.train_dis_returns
+        log_prefix = "z_test_" if z_test_mode else ""
 
         for k in set(cur_stats) | set(env_info):
             if isinstance(env_info.get(k), list):
@@ -185,12 +187,10 @@ class DistEpisodeRunner:
 
         cur_returns.append(r_acc)
         cur_dis_returns.append(distributed_r_acc)
-        if test_mode and sample_return_mode and (len(self.test_returns) == self.args.test_nepisode):  # dont log when test_phase in
+        if z_test_mode and (len(self.test_returns) == self.args.test_nepisode):  # dont log when test_phase in
             self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase, z_q_cp, z_p_cp)
         elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:
             self._log(cur_returns, cur_dis_returns, cur_stats, log_prefix, train_phase, z_q_cp, z_p_cp)
-            if hasattr(self.mac.action_selector, "epsilon"):
-                self.logger.log_stat("epsilon", self.mac.action_selector.epsilon, self.t_env)
             self.log_train_stats_t = self.t_env
 
         if sample_return_mode:

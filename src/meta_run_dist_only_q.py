@@ -371,6 +371,8 @@ def run_distance_sequential(args, logger):
         # logger.log_vec(tag="z_p", mat=z_p, global_step=runner.t_env)
         # logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
         log_z(z_q, z_p, args, logger, runner, prefix="train")
+        if hasattr(z_mac.z_p_actors_selector, "epsilon"):
+            logger.log_stat("z_actor_epsilon", z_mac.z_p_actors_selector, runner.t_env)
         logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
 
         if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
@@ -420,6 +422,11 @@ def log_z(z_q, z_p, args, logger, runner, prefix):
             logger.log_stat("{} giver agent {} to receiver agent {}".format(prefix, giver, receiver),
                             dist[giver][receiver],
                             runner.t_env)
+
+    logger.log_stat("agent 0 z_p".format(prefix, z_p_cp[0]))
+    logger.log_stat("agent 0 z_q".format(prefix, z_q_cp[0]))
+    logger.log_stat("agent 1 z_p".format(prefix, z_p_cp[1]))
+    logger.log_stat("agent 1 z_q".format(prefix, z_q_cp[1]))
 
 
 def sample_dist_norm(args, train=False, autograd=False):
