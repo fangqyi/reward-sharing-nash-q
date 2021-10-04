@@ -423,10 +423,10 @@ def log_z(z_q, z_p, args, logger, runner, prefix):
                             dist[giver][receiver],
                             runner.t_env)
 
-    logger.log_stat("agent 0 z_p".format(prefix, z_p_cp[0]))
-    logger.log_stat("agent 0 z_q".format(prefix, z_q_cp[0]))
-    logger.log_stat("agent 1 z_p".format(prefix, z_p_cp[1]))
-    logger.log_stat("agent 1 z_q".format(prefix, z_q_cp[1]))
+    logger.log_stat("{} agent 0 z_p".format(prefix), z_p_cp[0], runner.t_env)
+    logger.log_stat("{} agent 0 z_q".format(prefix), z_q_cp[0], runner.t_env)
+    logger.log_stat("{} agent 1 z_p".format(prefix), z_p_cp[1], runner.t_env)
+    logger.log_stat("{} agent 1 z_q".format(prefix), z_q_cp[1], runner.t_env)
 
 
 def sample_dist_norm(args, train=False, autograd=False):
