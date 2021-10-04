@@ -76,14 +76,14 @@ class ZQSeparateMAC():
         z_p_outs = self._forward_z_p(data, idx).view(1, self.args.latent_relation_space_dim, -1)
 
         if idx != self.n_agents-1:
-            chosen_z_p_idx = self.z_p_actors_selector.select_action(z_p_outs, t_env=t_env, test_mode=test_mode).view(-1)
+            chosen_z_p_idx = self.z_p_actors_selector.select_action(z_p_outs, t_env=t_env, test_mode=test_mode).view(-1).to(self.args.device)
             z_p = th.tensor([self.z_options[chosen_z_p_idx[idx]] for idx in range(len(chosen_z_p_idx))]).float().to(self.args.device)
         else:  # fixed the value for last agent
-            chosen_z_p_idx = th.zeros([self.args.latent_relation_space_dim])
+            chosen_z_p_idx = th.zeros([self.args.latent_relation_space_dim]).to(self.args.device)
             z_p = th.zeros([self.args.latent_relation_space_dim]).float().to(self.args.device)
         # z_q
         z_q_outs = self._forward_z_q(data, idx, z_p, is_train=False).view(1, self.args.latent_relation_space_dim, -1)
-        chosen_z_q_idx = self.z_q_actors_selector.select_action(z_q_outs, t_env=t_env, test_mode=test_mode).view(-1)
+        chosen_z_q_idx = self.z_q_actors_selector.select_action(z_q_outs, t_env=t_env, test_mode=test_mode).view(-1).to(self.args.device)
         z_q = th.tensor([self.z_options[chosen_z_q_idx[idx]] for idx in range(len(chosen_z_q_idx))]).float()
         return z_p, z_q, chosen_z_p_idx, chosen_z_q_idx
 
