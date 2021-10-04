@@ -372,7 +372,7 @@ def run_distance_sequential(args, logger):
         # logger.log_vec(tag="z_q", mat=z_q, global_step=runner.t_env)
         log_z(z_q, z_p, args, logger, runner, prefix="train")
         if hasattr(z_mac.z_p_actors_selector, "epsilon"):
-            logger.log_stat("z_actor_epsilon", z_mac.z_p_actors_selector, runner.t_env)
+            logger.log_stat("z_actor_epsilon", z_mac.z_p_actors_selector.epsilon, runner.t_env)
         logger.console_logger.info("t_env: {} / {}".format(runner.t_env, t_max))
 
         if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
