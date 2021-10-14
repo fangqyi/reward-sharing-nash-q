@@ -13,9 +13,8 @@ class ZQSeparateMAC():
         self.n_agents = args.n_agents
         self.args = args
         self.relation_space_div_interval = args.relation_space_div_interval
-        self.z_options = list(range(int(args.latent_relation_space_lower_bound),
-                                    int(args.latent_relation_space_upper_bound) + 1,
-                                    int(args.relation_space_div_interval)))  # this is horrible
+        self.z_options = [0, 3, 5]
+        # list(range(int(args.latent_relation_space_lower_bound), int(args.latent_relation_space_upper_bound) + 1, int(args.relation_space_div_interval)))  # this is horrible
 
         input_size = args.latent_relation_space_dim * (args.n_agents-1) * 2
         output_size = args.latent_relation_space_dim * len(self.z_options)  # TODO: is actor functional when dim > 1

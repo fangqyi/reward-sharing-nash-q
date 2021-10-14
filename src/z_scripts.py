@@ -14,8 +14,8 @@ def distance(a, b):
     return ret
 
 
-upper = 6
-tasks = range(0, upper, 1)
+upper = 5 # 10 #6
+tasks = (0, 3, 5)# range(0, upper, 1)
 div = 1
 n_agents = 2
 # z_q_cp = [1, 2]  # [2, 1]
@@ -61,7 +61,7 @@ def dis_print(z_p_cp, z_q_cp):
 
     dist = []
     for giver in range(n_agents):
-        dist.append(prop([upper+1e-4- distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(n_agents)]))
+        dist.append(prop([upper+1e-4 - distance(z_q_cp[giver], z_p_cp[receiver]) for receiver in range(n_agents)]))
 
     for receiver in range(n_agents):
         for giver in range(n_agents):

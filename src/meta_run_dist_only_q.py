@@ -220,7 +220,6 @@ def run_distance_sequential(args, logger):
     mac.train_phase = train_phase
 
     # loading from checkpoint
-    print(args.checkpoint_path)
     if args.checkpoint_path != "":
 
         timesteps = []
