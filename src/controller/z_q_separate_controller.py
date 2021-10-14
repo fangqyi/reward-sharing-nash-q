@@ -51,7 +51,7 @@ class ZQSeparateMAC():
         if idx != 0:
             z_q_vals = self._forward_z_q(data, idx, cur_z_p, is_train)
         else:
-            z_q_vals = th.zeros(z_p_vals.shape)
+            z_q_vals = th.zeros(z_p_vals.shape).to(self.args.device)
         return z_p_vals, z_q_vals
 
     def select_z(self, data, t_env, test_mode=False):
@@ -164,10 +164,10 @@ class ZQSeparateMAC():
 
     def _forward_z_p(self, data, idx):
         z_p_inputs = self._build_z_p_input(data, idx)
-        z_p_q_vals = self.z_p_actors[idx].forward(z_p_inputs)  # [z_dim, div_num]
+        z_p_q_vals = self.z_p_actors[idx].forward(z_p_inputs).to(self.args.device)  # [z_dim, div_num]
         return z_p_q_vals
 
     def _forward_z_q(self, data, idx, z_p, is_train=False):
         z_q_inputs = self._build_z_q_input(data, z_p, idx, is_train)
-        z_q_q_vals = self.z_q_actors[idx].forward(z_q_inputs)
+        z_q_q_vals = self.z_q_actors[idx].forward(z_q_inputs).to(self.args.device)
         return z_q_q_vals
