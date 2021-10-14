@@ -95,8 +95,13 @@ class ZQSeparateMAC():
         return z_p, z_q, chosen_z_p_idx, chosen_z_q_idx
 
     def parameters(self):
-        return [list(self.z_p_actors[i].parameters()) + list(self.z_q_actors[i].parameters()) if i != 0 else [] for i in
-                range(self.n_agents)]
+        params = []
+        for i in range(self.n_agents):
+            if i == 0:
+                params.append(list(self.z_p_actors[i].parameters()))
+            else:
+                params.append(list(self.z_p_actors[i].parameters()) + list(self.z_q_actors[i].parameters()))
+        return params
 
     def load_state(self, other_mac):
         for idx in range(self.n_agents):
