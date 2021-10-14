@@ -24,7 +24,7 @@ z_test_interval: 10000
 z_batch_size: 32
 
 meta_type: "distance_latent"
-latent_relation_space_dim: 1
+latent_relation_space_dim: 1  # TODO: the code gonna be sad if change to > 1 in z_q_separate_controller.py
 latent_relation_space_upper_bound: 5.0
 latent_relation_space_lower_bound: 0.0
 relation_space_div_interval: 1
@@ -67,7 +67,8 @@ z_q_update: True
 
 # loading model from environment
 load_pretrained_model: True
-pretrained_model_load_path: "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_decentralized__2021-08-24_14-19-30/2407650"
+pretrained_model_load_path:  "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_decentralized__2021-09-30_02-16-49/2402500"
+# "/home/paperspace/reward-sharing-nash-q/results/pretrained_models/dist_meta_learning_cleanup_decentralized__2021-08-24_14-19-30/2407650"
 
 # debug: test if deterministic sharing schemes improve performance
 deterministic_pretrained_tasks: False
@@ -77,8 +78,6 @@ div_num: 2
 hardcoded_pretrained_tasks: False
 hardcoded_tasks_zp: [[5.0, 0.0], [4.0, 4.0], [4.0, 3.0], [5.0, 0.0], [2.0, 5.0], [2.0, 1.0], [3.0, 5.0], [2.0, 4.0], [4.0, 0.0], [5.0, 1.0], [3.0, 4.0], [4.0, 5.0], [4.0, 1.0], [3.0, 5.0], [5.0, 0.0], [3.0, 1.0], [1.0, 5.0], [3.0, 1.0], [4.0, 5.0], [0.0, 5.0], [1.0, 2.0], [2.0, 5.0], [4.0, 2.0], [3.0, 5.0], [3.0, 0.0], [2.0, 0.0], [4.0, 0.0], [5.0, 3.0], [1.0, 5.0], [0.0, 1.0], [1.0, 0.0], [5.0, 2.0], [0.0, 2.0], [5.0, 0.0], [1.0, 5.0], [5.0, 1.0], [1.0, 5.0], [5.0, 2.0], [4.0, 0.0], [3.0, 0.0], [0.0, 3.0], [0.0, 5.0], [0.0, 4.0], [4.0, 5.0], [0.0, 5.0], [5.0, 0.0], [0.0, 5.0], [3.0, 1.0], [4.0, 1.0], [0.0, 2.0]]
 hardcoded_tasks_zq: [[0.0, 0.0], [0.0, 3.0], [0.0, 3.0], [0.0, 5.0], [0.0, 1.0], [0.0, 5.0], [0.0, 5.0], [0.0, 5.0], [0.0, 1.0], [0.0, 5.0], [0.0, 3.0], [0.0, 2.0], [0.0, 5.0], [0.0, 2.0], [0.0, 1.0], [0.0, 0.0], [0.0, 4.0], [0.0, 5.0], [0.0, 0.0], [0.0, 4.0], [0.0, 4.0], [0.0, 5.0], [0.0, 4.0], [0.0, 4.0], [0.0, 1.0], [0.0, 1.0], [0.0, 2.0], [0.0, 0.0], [0.0, 0.0], [0.0, 5.0], [0.0, 5.0], [0.0, 4.0], [0.0, 1.0], [0.0, 3.0], [0.0, 1.0], [0.0, 3.0], [0.0, 3.0], [0.0, 5.0], [0.0, 5.0], [0.0, 5.0], [0.0, 4.0], [0.0, 5.0], [0.0, 5.0], [0.0, 5.0], [0.0, 3.0], [0.0, 2.0], [0.0, 2.0], [0.0, 2.0], [0.0, 2.0], [0.0, 5.0]]
-
-# : 2
 
 # sharing structure
 sharing_structure: "linear"  # "linear", "softmax"
